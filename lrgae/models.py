@@ -33,6 +33,7 @@ class lrGAE(nn.Module):
         self,
         encoder,
         decoder,
+        mask,
         loss="bce",
         left=2,
         right=2,
@@ -40,6 +41,7 @@ class lrGAE(nn.Module):
         super().__init__()
         self.encoder = encoder
         self.decoder = decoder
+        self.mask = mask
         self.left = left[0] if isinstance(left, (list, tuple)) and len(left) == 1 else left
         self.right = right[0] if isinstance(right, (list, tuple)) and len(right) == 1 else right
         
@@ -56,7 +58,7 @@ class lrGAE(nn.Module):
         elif loss == 'mse':
             self.loss_fn = nn.MSELoss()
         elif loss == 'sce':
-            self.loss_fn = SCELoss()            
+            self.loss_fn = SCELoss(2)            
         else:
             raise ValueError(loss)
 
@@ -67,8 +69,8 @@ class lrGAE(nn.Module):
     def forward(self, x, edge_index, **kwargs):
         return self.encoder(x, edge_index, **kwargs)
 
-    def train_step_feature(self, remaining_graph, masked_graph):
-
+    def train_step_feature(self, graph):
+        remaining_graph, masked_graph = self.mask(graph)
         remaining_features, remaining_edge_index = remaining_graph.x, remaining_graph.edge_index
         masked_features, masked_edge_index = masked_graph.x, masked_graph.edge_index
         mask = masked_graph.mask
@@ -90,8 +92,8 @@ class lrGAE(nn.Module):
         loss = self.loss_fn(left.masked_select(mask), right.masked_select(mask))     
         return loss
         
-    def train_step(self, remaining_graph, masked_graph):
-
+    def train_step(self, graph):
+        remaining_graph, masked_graph = self.mask(graph)
         x, remaining_edges = remaining_graph.x, remaining_graph.edge_index
         masked_edges = masked_graph.edge_index
         z = self.encoder(x, remaining_edges)
@@ -200,6 +202,69 @@ class lrGAE(nn.Module):
         return {'auc': roc_auc_score(y, pred),
                 'ap': average_precision_score(y, pred)}
 
+class GraphMAE(lrGAE):
+    def __init__(self, encoder, decoder, mask, neck, in_channels,
+                 replace_rate=0.2, mask_rate=0.5,
+                 alpha=1):
+        super().__init__(encoder=encoder, decoder=decoder, mask=mask, loss='sce')
+        self.encoder = encoder
+        self.neck = neck
+        self.decoder = decoder
+        self.enc_mask_token = nn.Parameter(torch.zeros(1, in_channels))
+        
+        self.replace_rate = replace_rate
+        self.mask_token_rate = 1 - self.replace_rate
+        self.mask_rate = mask_rate
+
+    def reset_parameters(self):
+        self.encoder.reset_parameters()
+        self.neck.reset_parameters()
+        self.decoder.reset_parameters()
+        self.enc_mask_token.data.zero_()
+        
+    def train_step(self, data):
+        x, edge_index = data.x, data.edge_index
+        device = x.device
+        num_nodes = x.size(0)
+        perm = torch.randperm(num_nodes, device=device)
+
+        num_mask_nodes = int(self.mask_rate * num_nodes)
+        mask_nodes = perm[: num_mask_nodes]
+        keep_nodes = perm[num_mask_nodes: ]
+
+        if self.replace_rate > 0:
+            num_noise_nodes = int(self.replace_rate * num_mask_nodes)
+            perm_mask = torch.randperm(num_mask_nodes, device=device)
+            token_nodes = mask_nodes[perm_mask[: int(self.mask_token_rate * num_mask_nodes)]]
+            noise_nodes = mask_nodes[perm_mask[-int(self.replace_rate * num_mask_nodes):]]
+            noise_to_be_chosen = torch.randperm(num_nodes, device=device)[:num_noise_nodes]
+
+            out_x = x.clone()
+            out_x[token_nodes] = 0.0
+            out_x[noise_nodes] = x[noise_to_be_chosen]
+        else:
+            out_x = x.clone()
+            token_nodes = mask_nodes
+            out_x[mask_nodes] = 0.0  
+            
+        out_x[token_nodes] += self.enc_mask_token
+
+        enc_rep = self.encoder(out_x, edge_index)      
+        # enc_rep = torch.cat(enc_rep[1:], dim=1)
+        enc_rep = enc_rep[-1]
+        rep = self.neck(enc_rep)
+        
+        # if decoder_type not in ("mlp", "linear"):
+        # * remask, re-mask
+        rep[mask_nodes] = 0    
+        recon = self.decoder(rep, edge_index)[-1]
+        
+        x_init = x[mask_nodes]
+        x_rec = recon[mask_nodes]
+        
+        loss = self.loss_fn(x_rec, x_init)
+        return loss
+        
 def linear_probing(train_x, 
                    train_y, 
                     val_x,

@@ -110,7 +110,7 @@ def main():
                           dropout=args.decoder_dropout,
                           norm=args.decoder_norm)
     
-    model = lrGAE(encoder, decoder, 
+    model = lrGAE(encoder, decoder, mask,
                     left=args.left,
                     right=args.right).to(device)
     print(model)
@@ -122,11 +122,9 @@ def main():
     
     pbar = tqdm(range(1, 1 + args.epochs))
     for epoch in pbar:
-    
         optimizer.zero_grad()
         model.train()
-        remaining_graph, masked_graph = mask(train_data)
-        loss = model.train_step(remaining_graph, masked_graph)
+        loss = model.train_step(train_data)
         loss.backward()
         if args.grad_norm > 0:
             # gradient clipping

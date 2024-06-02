@@ -15,29 +15,28 @@ from lrgae.utils import set_seed, tab_printer
 from lrgae.encoders import GNNEncoder
 from lrgae.decoders import EdgeDecoder, CrossCorrelationDecoder, FeatureDecoder
 from lrgae.masks import MaskFeature, NullMask
-from lrgae.models import lrGAE
+from lrgae.models import GraphMAE
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--dataset", nargs="?", default="Cora", help="Datasets. (default: Cora)")
 parser.add_argument("--mask", nargs="?", default="node", help="Masking stractegy, `node`, or `none` (default: node)")
-parser.add_argument('--seed', type=int, default=2022, help='Random seed for model and dataset. (default: 2022)')
+parser.add_argument('--seed', type=int, default=2024, help='Random seed for model and dataset. (default: 2024)')
 
 parser.add_argument("--layer", nargs="?", default="gat", help="GNN layer, (default: gat)")
 parser.add_argument("--encoder_activation", nargs="?", default="prelu", help="Activation function for GNN encoder, (default: elu)")
-parser.add_argument('--encoder_channels', type=int, default=128, help='Channels of hidden representation. (default: 128)')
+parser.add_argument('--encoder_channels', type=int, default=1024, help='Channels of hidden representation. (default: 128)')
 parser.add_argument('--encoder_layers', type=int, default=2, help='Number of layers for encoder. (default: 2)')
 parser.add_argument('--encoder_dropout', type=float, default=0.2, help='Dropout probability of encoder. (default: 0.8)')
 parser.add_argument("--encoder_norm", nargs="?", default="none", help="Normalization (default: none)")
 
 parser.add_argument('--decoder_channels', type=int, default=32, help='Channels of decoder layers. (default: 32)')
-parser.add_argument("--decoder_activation", nargs="?", default="prelu", help="Activation function for GNN encoder, (default: elu)")
+parser.add_argument("--decoder_activation", nargs="?", default="prelu", help="Activation function for GNN encoder, (default: prelu)")
 parser.add_argument('--decoder_layers', type=int, default=1, help='Number of layers for decoders. (default: 2)')
 parser.add_argument('--decoder_dropout', type=float, default=0.2, help='Dropout probability of decoder. (default: 0.2)')
 parser.add_argument("--decoder_norm", nargs="?", default="none", help="Normalization (default: none)")
 
-parser.add_argument('--left', nargs='+', type=int, default=2, help='Left layer. (default: 2)')
-parser.add_argument('--right', nargs='+', type=int, default=2, help='Right layer. (default: 2)')
 parser.add_argument('--p', type=float, default=0.7, help='Mask ratio or sample ratio for MaskNode')
+parser.add_argument("--replace_rate", type=float, default=0.0)
 
 parser.add_argument('--lr', type=float, default=0.0001, help='Learning rate for training. (default: 0.01)')
 parser.add_argument('--weight_decay', type=float, default=5e-5, help='weight_decay for link prediction training. (default: 5e-5)')
@@ -48,7 +47,7 @@ parser.add_argument('--nodeclas_lr', type=float, default=0.01, help='Learning ra
 parser.add_argument('--nodeclas_weight_decay', type=float, default=5e-5, help='weight_decay for node classification training. (default: 1e-3)')
 
 parser.add_argument('--epochs', type=int, default=1500, help='Number of training epochs. (default: 500)')
-parser.add_argument('--runs', type=int, default=10, help='Number of runs. (default: 10)')
+parser.add_argument('--runs', type=int, default=1, help='Number of runs. (default: 1)')
 parser.add_argument('--eval_steps', type=int, default=50, help='(default: 50)')
 parser.add_argument("--device", type=int, default=0)
 
@@ -86,16 +85,17 @@ def main():
     else:
         mask = NullMask() # vanilla GAE
 
+    num_heads = 8
     encoder = GNNEncoder(in_channels=data.num_features, 
-                         hidden_channels=args.encoder_channels, 
+                         hidden_channels=args.encoder_channels//num_heads, 
                          out_channels=args.encoder_channels,
                          num_layers=args.encoder_layers, 
                          dropout=args.encoder_dropout,
                          norm=args.encoder_norm, 
                          layer=args.layer, 
-                         num_heads=4,
+                         num_heads=num_heads,
                          activation=args.encoder_activation)
-
+    neck = nn.Linear(args.encoder_channels, args.encoder_channels, bias=False)
     decoder = GNNEncoder(in_channels=args.encoder_channels, 
                          hidden_channels=args.decoder_channels,
                          out_channels=data.num_features,
@@ -107,10 +107,9 @@ def main():
                          add_last_act=False,
                          add_last_bn=False)    
     
-    model = lrGAE(encoder, decoder, mask,
-                    loss='sce',
-                    left=args.left,
-                    right=args.right).to(device)
+    model = GraphMAE(encoder, decoder, mask, neck, data.x.size(1),
+                     replace_rate=args.replace_rate,
+                     mask_rate=args.p).to(device)
     print(model)
     print(mask)
 
@@ -123,7 +122,7 @@ def main():
     
         optimizer.zero_grad()
         model.train()
-        loss = model.train_step_feature(data)
+        loss = model.train_step(data)
         loss.backward()
         if args.grad_norm > 0:
             # gradient clipping

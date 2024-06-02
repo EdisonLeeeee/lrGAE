@@ -4,6 +4,8 @@
 python node_classification/structure_lrgae.py --left 2 --right 2
 python node_classification/feature_lrgae.py --left 2 --right 0 --device 1 --l2_normalize
 
+python node_classification/graphmae.py
+
 ```
 
 # 链路预测
