@@ -112,8 +112,7 @@ def main():
     print(model)
     print(mask)
 
-    best_acc = 0
-    best_std = 0
+    best_metric = None
     optimizer = torch.optim.Adam(model.parameters(),
                                  lr=args.lr,
                                  weight_decay=args.weight_decay)    
@@ -130,18 +129,22 @@ def main():
         optimizer.step()
         
         if epoch % args.eval_steps == 0:
-            print('Evaluating...')
-            acc, std = model.eval_nodeclas(data,
+            print(f'\nEvaluating on epoch {epoch}...')
+            results = model.eval_nodeclas(data,
                                lr=args.nodeclas_lr,
                                weight_decay=args.nodeclas_weight_decay,
                                l2_normalize=args.l2_normalize,
                                runs=args.runs,
                                device=device)
-            print(f'Node classification accuracy: {acc:.2%}±{std:.2%}')
-            if best_acc < acc:
-                best_acc = acc
-                best_std = std
-    print(f'Node classification accuracy: {best_acc:.2%}±{best_std:.2%}')
+            if best_metric is None:
+                best_metric = results
+            for metric, value in results.items():
+                print(f'Averaged {metric}: {value:.2%}')
+                if best_metric[metric] < value:
+                    best_metric = results
+                
+    for metric, value in best_metric.items():
+        print(f'Best averaged {metric}: {value:.2%}')             
 
 if __name__ == "__main__":
     main()

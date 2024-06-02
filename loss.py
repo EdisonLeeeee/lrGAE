@@ -8,7 +8,6 @@ def cosine_similarity(z1, z2):
     z2 = F.normalize(z2, p=2, dim=1)
     return torch.mm(z1, z2.t())
 
-
 def simcse_loss(a, b, tau=0.02):
     similarity = cosine_similarity(a, b) / tau
     labels = torch.arange(
@@ -25,21 +24,26 @@ def hinge_auc_loss(pos_out, neg_out):
 def log_rank_loss(pos_out, neg_out, num_neg=1):
     return -torch.log(torch.sigmoid(pos_out - neg_out) + 1e-15).mean()
 
-class CELoss(nn.Module):
-    def forward(self, x, y):
-        return ce_loss(x, y)
-        
-def ce_loss(pos_out, neg_out):
-    pos_loss = F.binary_cross_entropy(pos_out.sigmoid(), torch.ones_like(pos_out))
-    neg_loss = F.binary_cross_entropy(neg_out.sigmoid(), torch.zeros_like(neg_out))
-    return pos_loss + neg_loss
-
 def info_nce_loss(pos_out, neg_out):
     pos_exp = torch.exp(pos_out)
     neg_exp = torch.sum(torch.exp(neg_out), 1, keepdim=True)
     return -torch.log(pos_exp / (pos_exp + neg_exp) + 1e-15).mean()
 
 
+class FusedBCE(nn.Module):
+    def __init__(self, decoder):
+        super().__init__()
+        self.decoder = decoder
+        
+    def forward(self, left, right, paris, positive=True):
+        out = self.decoder(left, right, paris)
+        if positive:
+            labels = torch.ones_like(out)
+        else:
+            labels = torch.zeros_like(out)
+        loss = F.binary_cross_entropy(out, labels)   
+        return loss
+    
 class SCELoss(nn.Module):
     def __init__(self, alpha=3):
         super().__init__()

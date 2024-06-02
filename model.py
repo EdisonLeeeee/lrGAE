@@ -12,11 +12,11 @@ from sklearn.metrics import roc_auc_score, average_precision_score
 from tqdm import tqdm
 
 # custom modules
-from loss import info_nce_loss, ce_loss, log_rank_loss, hinge_auc_loss, auc_loss, semi_loss, SCELoss, uniformity_loss, simcse_loss
+from loss import FusedBCE, info_nce_loss, log_rank_loss, hinge_auc_loss, auc_loss, semi_loss, SCELoss, uniformity_loss, simcse_loss
 
 
-def random_negative_sampler(edge_index, num_nodes, num_neg_samples):
-    neg_edges = torch.randint(0, num_nodes, size=(2, num_neg_samples)).to(edge_index)
+def random_negative_sampler(num_nodes, num_neg_samples, device):
+    neg_edges = torch.randint(0, num_nodes, size=(2, num_neg_samples)).to(device)
     return neg_edges
 
 def init_params(module, n_layers):
@@ -33,7 +33,7 @@ class lrGAE(nn.Module):
         self,
         encoder,
         decoder,
-        loss="ce",
+        loss="bce",
         left=2,
         right=2,
     ):
@@ -43,8 +43,8 @@ class lrGAE(nn.Module):
         self.left = left[0] if isinstance(left, (list, tuple)) and len(left) == 1 else left
         self.right = right[0] if isinstance(right, (list, tuple)) and len(right) == 1 else right
         
-        if loss == "ce":
-            self.loss_fn = ce_loss
+        if loss == "bce":
+            self.loss_fn = FusedBCE(decoder)
         elif loss == "auc":
             self.loss_fn = auc_loss
         elif loss == "info_nce":
@@ -97,12 +97,6 @@ class lrGAE(nn.Module):
         x, remaining_edges = remaining_graph.x, remaining_graph.edge_index
         masked_edges = masked_graph.edge_index
         z = self.encoder(x, remaining_edges)
-        aug_edge_index, _ = add_self_loops(remaining_edges)
-        neg_edges = random_negative_sampler(
-            aug_edge_index,
-            num_nodes=remaining_graph.num_nodes,
-            num_neg_samples=masked_edges.size(1),
-        )
         
         if isinstance(self.left, (list, tuple)):
             left = [z[l] for l in self.left]
@@ -112,10 +106,16 @@ class lrGAE(nn.Module):
             right = [z[r] for r in self.right]
         else:
             right = z[self.right]
-            
-        pos_out = self.decoder(left, right, masked_edges, sigmoid=False)
-        neg_out = self.decoder(left, right, neg_edges, sigmoid=False)
-        loss = self.loss_fn(pos_out, neg_out)        
+
+        loss = self.loss_fn(left, right, masked_edges, positive=True)
+
+        neg_edges = random_negative_sampler(
+            num_nodes=remaining_graph.num_nodes,
+            num_neg_samples=masked_edges.size(1),
+            device=masked_edges.device,
+        )
+        
+        loss += self.loss_fn(left, right, neg_edges, positive=False)
         return loss
 
     @torch.no_grad()
@@ -141,35 +141,20 @@ class lrGAE(nn.Module):
         neg_y = neg_pred.new_zeros(neg_pred.size(0))
 
         y = torch.cat([pos_y, neg_y], dim=0)
-        y, pred = y.cpu().numpy(), pred.cpu().numpy()
-
-        return roc_auc_score(y, pred), average_precision_score(y, pred)
-
+        return y.cpu(), pred.cpu()
+        
 
     def eval_nodeclas(self, 
                           data,
                           batch_size=512,
                           epochs=100,
-                          runs=10,
+                          runs=1,
                           lr=0.01,
                           weight_decay=0.,
                           l2_normalize=False,
                           mode='cat',
                           device='cpu'):
-        
-        @torch.no_grad()
-        def test(loader):
-            classifier.eval()
-            logits = []
-            labels = []
-            for nodes in loader:
-                logits.append(classifier(embedding[nodes]))
-                labels.append(node_labels[nodes])
-            logits = torch.cat(logits, dim=0).cpu()
-            labels = torch.cat(labels, dim=0).cpu()
-            logits = logits.argmax(1)
-            return (logits == labels).float().mean().item()
-            
+
         with torch.no_grad():
             self.eval()
             embedding = self(data.x.to(device), data.edge_index.to(device))[1:]
@@ -179,40 +164,24 @@ class lrGAE(nn.Module):
                 embedding = embedding[-1]
             if l2_normalize:
                 embedding = F.normalize(embedding, p=2, dim=1)  # Cora, Citeseer, Pubmed     
-                
-        node_labels = data.y.squeeze().to(device)
-        num_classes = node_labels.max().item() + 1
-        loss_fn = nn.CrossEntropyLoss()
-        classifier = nn.Linear(embedding.size(1), num_classes).to(device)        
 
-        train_loader = DataLoader(data.train_mask.nonzero().squeeze(), batch_size=batch_size, shuffle=True)
-        test_loader = DataLoader(data.test_mask.nonzero().squeeze(), batch_size=20000)
-        val_loader = DataLoader(data.val_mask.nonzero().squeeze(), batch_size=20000)
+        train_x, train_y = embedding[data.train_mask], data.y[data.train_mask]
+        val_x, val_y = embedding[data.val_mask], data.y[data.val_mask]
+        test_x, test_y = embedding[data.test_mask], data.y[data.test_mask]
+        results = linear_probing(train_x, 
+                   train_y, 
+                    val_x,
+                   val_y,
+                   test_x,
+                   test_y,
+                  lr=lr,
+                  weight_decay=weight_decay,
+                   batch_size=batch_size,
+                                 runs=runs,
+                                 epochs=epochs,
+                   device=device)
         
-        results = []
-        for run in range(1, runs+1):
-            nn.init.xavier_uniform_(classifier.weight.data)
-            nn.init.zeros_(classifier.bias.data)
-            optimizer = torch.optim.Adam(classifier.parameters(), 
-                                         lr=lr, 
-                                         weight_decay=weight_decay)
-    
-            best_val_metric = test_metric = 0
-            for epoch in range(1, epochs + 1):
-                classifier.train()
-                for nodes in train_loader:
-                    optimizer.zero_grad()
-                    loss_fn(classifier(embedding[nodes]), node_labels[nodes]).backward()
-                    optimizer.step()
-                    
-                val_metric, test_metric = test(val_loader), test(test_loader)
-                if val_metric > best_val_metric:
-                    best_val_metric = val_metric
-                    best_test_metric = test_metric
-            results.append(best_test_metric)
-            print(f'Runs {run}: accuracy {best_test_metric:.2%}')
-        
-        return np.mean(results), np.std(results)      
+        return {'acc': np.mean(results)}
 
     def eval_linkpred(self, 
                       data,
@@ -225,4 +194,71 @@ class lrGAE(nn.Module):
                       mode='cat',
                       device='cpu'):
         
-        return self.test_step(data, data.pos_edge_label_index, data.neg_edge_label_index, batch_size=batch_size)
+        y, pred = self.test_step(data, 
+                              data.pos_edge_label_index, 
+                              data.neg_edge_label_index, 
+                              batch_size=batch_size)
+        
+        return {'auc': roc_auc_score(y, pred),
+                'ap': average_precision_score(y, pred)}
+
+def linear_probing(train_x, 
+                   train_y, 
+                    val_x,
+                   val_y,
+                   test_x,
+                   test_y,
+                  lr=0.01,
+                  weight_decay=0.,
+                   batch_size=512,
+                   runs=5,
+                   epochs=100,
+                   device='cpu'):
+
+    @torch.no_grad()
+    def test(loader):
+        classifier.eval()
+        logits = []
+        labels = []
+        for x, y in loader:
+            logits.append(classifier(x))
+            labels.append(y)
+        logits = torch.cat(logits, dim=0).cpu()
+        labels = torch.cat(labels, dim=0).cpu()
+        logits = logits.argmax(1)
+        return (logits == labels).float().mean().item()
+        
+    train_y = train_y.squeeze().to(device)
+    val_y = val_y.squeeze().to(device)
+    test_y = test_y.squeeze().to(device)
+    
+    num_classes = train_y.max().item() + 1
+    classifier = nn.Linear(train_x.size(1), num_classes).to(device)        
+
+    train_loader = DataLoader(TensorDataset(train_x, train_y), batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(TensorDataset(val_x, val_y), batch_size=20000)
+    test_loader = DataLoader(TensorDataset(test_x, test_y), batch_size=20000)
+
+    results = []
+    for _ in range(runs):
+        nn.init.xavier_uniform_(classifier.weight.data)
+        nn.init.zeros_(classifier.bias.data)
+        optimizer = torch.optim.Adam(classifier.parameters(), 
+                                     lr=lr, 
+                                     weight_decay=weight_decay)
+    
+        best_val_metric = test_metric = 0
+        for epoch in range(1, epochs + 1):
+            classifier.train()
+            for x, y in train_loader:
+                optimizer.zero_grad()
+                F.cross_entropy(classifier(x), y).backward()
+                optimizer.step()
+                
+            val_metric, test_metric = test(val_loader), test(test_loader)
+            if val_metric > best_val_metric:
+                best_val_metric = val_metric
+                best_test_metric = test_metric
+            results.append(best_test_metric)
+            
+    return results
