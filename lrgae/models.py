@@ -12,7 +12,7 @@ from sklearn.metrics import roc_auc_score, average_precision_score
 from tqdm import tqdm
 
 # custom modules
-from loss import FusedBCE, info_nce_loss, log_rank_loss, hinge_auc_loss, auc_loss, semi_loss, SCELoss, uniformity_loss, simcse_loss
+from lrgae.loss import FusedBCE, info_nce_loss, log_rank_loss, hinge_auc_loss, auc_loss, semi_loss, SCELoss, uniformity_loss, simcse_loss
 
 
 def random_negative_sampler(num_nodes, num_neg_samples, device):
@@ -69,26 +69,24 @@ class lrGAE(nn.Module):
 
     def train_step_feature(self, remaining_graph, masked_graph):
 
-        remaining_features, edge_index = remaining_graph.x, remaining_graph.edge_index
-        masked_features = masked_graph.x
-        mask = masked_graph.get('mask')
-        
-        if mask is None:
-            # for plain GAE
-            mask = masked_features.new_ones(masked_features.size(0), 1, dtype=torch.bool)
+        remaining_features, remaining_edge_index = remaining_graph.x, remaining_graph.edge_index
+        masked_features, masked_edge_index = masked_graph.x, masked_graph.edge_index
+        mask = masked_graph.mask
 
         if self.left > 0:
-            zA = self.encoder(remaining_features, edge_index)
+            zA = self.encoder(remaining_features, remaining_edge_index)
         else:
             zA = [remaining_features]
             
         if self.right > 0:
-            zB = self.encoder(masked_features, edge_index)
+            zB = self.encoder(masked_features, masked_edge_index)
         else:
             zB = [masked_features]
 
-        left = self.decoder(zA[self.left], edge_index)[-1] if self.left > 0 else zA[self.left]
-        right = self.decoder(zB[self.right], edge_index)[-1] if self.right > 0 else zB[self.right]
+        left = self.decoder(zA[self.left], remaining_edge_index)[-1] if self.left > 0 else zA[self.left]
+        right = self.decoder(zB[self.right], masked_edge_index)[-1] if self.right > 0 else zB[self.right]
+        # left = self.decoder(zA[self.left], remaining_edge_index)[-1]
+        # right = masked_features        
         loss = self.loss_fn(left.masked_select(mask), right.masked_select(mask))     
         return loss
         
@@ -259,6 +257,6 @@ def linear_probing(train_x,
             if val_metric > best_val_metric:
                 best_val_metric = val_metric
                 best_test_metric = test_metric
-            results.append(best_test_metric)
+        results.append(best_test_metric)
             
     return results

@@ -159,15 +159,20 @@ class MaskFeature(nn.Module):
         
         remaining_graph = copy(data)
         remaining_graph.x = remaining_features
+        remaining_graph.mask = mask
         masked_graph = copy(data)
         masked_graph.x = masked_features
         masked_graph.mask = ~mask
-        masked_graph.xx = data.x
-        return remaining_graph, masked_graph        
+        return remaining_graph, masked_graph     
+        
+    def extra_repr(self):
+        return f"p={self.p}"        
         
 class NullMask(nn.Module):
     def __init__(self, *args, **kwargs):
         super().__init__()
         
     def forward(self, data):
-        return copy(data), copy(data)
+        masked_graph = copy(data)
+        masked_graph.mask = masked_graph.x.new_ones(masked_graph.x.size(0), 1, dtype=torch.bool)
+        return copy(data), masked_graph

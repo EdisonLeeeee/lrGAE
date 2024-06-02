@@ -6,7 +6,7 @@ from torch_geometric.nn import (
     Sequential,
 )
 from torch_sparse import SparseTensor
-from resolver import activation_resolver, normalization_resolver, layer_resolver
+from lrgae.resolver import activation_resolver, normalization_resolver, layer_resolver
 
 
 def to_sparse_tensor(edge_index, num_nodes):
@@ -69,7 +69,6 @@ class GNNEncoder(nn.Module):
                     layer.reset_parameters()
 
     def forward(self, x, edge_index):
-        edge_index = to_sparse_tensor(edge_index, x.size(0))
         out = [x]
         for block in self.network:
             x = block(x, edge_index)

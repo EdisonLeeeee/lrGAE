@@ -10,12 +10,12 @@ from tqdm.auto import tqdm
 from torch.utils.data import DataLoader
 
 # custom modules
-from dataset import get_dataset
-from utils import set_seed, tab_printer
-from encoders import GNNEncoder
-from decoders import EdgeDecoder, CrossCorrelationDecoder, FeatureDecoder
-from masks import MaskEdge, MaskPath, NullMask
-from model import lrGAE
+from lrgae.dataset import get_dataset
+from lrgae.utils import set_seed, tab_printer
+from lrgae.encoders import GNNEncoder
+from lrgae.decoders import EdgeDecoder, CrossCorrelationDecoder, FeatureDecoder
+from lrgae.masks import MaskEdge, MaskPath, NullMask
+from lrgae.models import lrGAE
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--dataset", nargs="?", default="Cora", help="Datasets. (default: Cora)")
@@ -50,7 +50,7 @@ parser.add_argument('--nodeclas_weight_decay', type=float, default=5e-5, help='w
 
 parser.add_argument('--epochs', type=int, default=500, help='Number of training epochs. (default: 500)')
 parser.add_argument('--runs', type=int, default=10, help='Number of runs. (default: 10)')
-parser.add_argument('--eval_steps', type=int, default=50, help='(default: 50)')
+parser.add_argument('--eval_steps', type=int, default=10, help='(default: 10)')
 parser.add_argument("--device", type=int, default=0)
 
 
@@ -72,13 +72,17 @@ def main():
 
     # (!IMPORTANT) Specify the path to your dataset directory ##############
     root = '~/public_data/pyg_data' # my root directory
-    # root = 'data/'
+    # root = '../data/'
     ########################################################################
     transform = T.Compose([
         T.ToUndirected(),
         T.ToDevice(device),
     ])
     data = get_dataset(root, args.dataset, transform=transform)
+    train_data, valid_data, test_data = T.RandomLinkSplit(num_val=0.05, num_test=0.1,
+                                                        is_undirected=True,
+                                                        split_labels=True,
+                                                        add_negative_train_samples=False)(data)
 
     assert args.mask in ['path', 'edge', 'none']
     if args.mask == 'path':
@@ -112,39 +116,32 @@ def main():
     print(model)
     print(mask)
 
-    best_metric = None
     optimizer = torch.optim.Adam(model.parameters(),
                                  lr=args.lr,
                                  weight_decay=args.weight_decay)    
-    for epoch in tqdm(range(1, 1 + args.epochs), 'Link prediction pretraining'):
+    
+    pbar = tqdm(range(1, 1 + args.epochs))
+    for epoch in pbar:
     
         optimizer.zero_grad()
         model.train()
-        remaining_graph, masked_graph = mask(data)
+        remaining_graph, masked_graph = mask(train_data)
         loss = model.train_step(remaining_graph, masked_graph)
         loss.backward()
         if args.grad_norm > 0:
             # gradient clipping
             nn.utils.clip_grad_norm_(model.parameters(), args.grad_norm)        
         optimizer.step()
-        
+        pbar.set_description(f'Loss: {loss.item():.4f}')
+
         if epoch % args.eval_steps == 0:
             print(f'\nEvaluating on epoch {epoch}...')
-            results = model.eval_nodeclas(data,
-                               lr=args.nodeclas_lr,
-                               weight_decay=args.nodeclas_weight_decay,
-                               l2_normalize=args.l2_normalize,
-                               runs=args.runs,
-                               device=device)
-            if best_metric is None:
-                best_metric = results
-            for metric, value in results.items():
-                print(f'Averaged {metric}: {value:.2%}')
-                if best_metric[metric] < value:
-                    best_metric = results
-                
-    for metric, value in best_metric.items():
-        print(f'Best averaged {metric}: {value:.2%}')             
+            val_results = model.eval_linkpred(valid_data)  
+            valid_auc, valid_ap = val_results['auc'], val_results['ap']  
+            test_results = model.eval_linkpred(test_data)  
+            test_auc, test_ap = test_results['auc'], test_results['ap']                
+            print(f'Link prediction valid_auc: {valid_auc:.2%}, valid_ap: {valid_ap:.2%}')
+            print(f'Link prediction test_auc: {test_auc:.2%}, test_ap: {test_ap:.2%}')
 
 if __name__ == "__main__":
     main()

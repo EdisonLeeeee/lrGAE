@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from torch_geometric.nn import Sequential
 
-from resolver import activation_resolver, normalization_resolver, layer_resolver
+from lrgae.resolver import activation_resolver, normalization_resolver, layer_resolver
 
 
 class DotProductEdgeDecoder(nn.Module):
