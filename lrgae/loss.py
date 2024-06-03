@@ -96,7 +96,7 @@ def semi_loss(z1, z2, tau):
 def uniformity_loss(features,t,max_size=30000,batch=10000):
     # calculate loss
     n = features.size(0)
-    features = torch.nn.functional.normalize(features)
+    features = F.normalize(features, p=2, dim=1)
     if n < max_size:
         loss = torch.log(torch.exp(2.*t*((features@features.T)-1.)).mean())
     else:

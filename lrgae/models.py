@@ -143,7 +143,6 @@ class lrGAE(nn.Module):
         y = torch.cat([pos_y, neg_y], dim=0)
         return y.cpu(), pred.cpu()
         
-
     def eval_nodeclas(self, 
                           data,
                           batch_size=512,
@@ -164,6 +163,7 @@ class lrGAE(nn.Module):
                 embedding = embedding[-1]
             if l2_normalize:
                 embedding = F.normalize(embedding, p=2, dim=1)  # Cora, Citeseer, Pubmed     
+        # return {'acc': np.mean(linear_probing_cv(embedding, data.y))}
 
         train_x, train_y = embedding[data.train_mask], data.y[data.train_mask]
         val_x, val_y = embedding[data.val_mask], data.y[data.val_mask]
@@ -520,7 +520,7 @@ class GraphMAE2(lrGAE):
             latent_pred = self.predictor(latent_pred)
             loss_latent = self.latent_loss(latent_pred, latent_target)
 
-        # ---- feature reconstruction ----
+        #,-- feature reconstruction,--
         origin_rep = self.neck(enc_rep)
 
         loss_rec_all = 0
@@ -574,6 +574,80 @@ class GraphMAE2(lrGAE):
 
         return rep, remask_nodes, rekeep_nodes
 
+
+class GiGaMAE(lrGAE):
+    def __init__(self, encoder, decoder):
+        super().__init__(encoder=encoder, decoder=decoder)
+        self.p1, self.p2, self.p3 = decoder[0], decoder[1], decoder[2]
+
+    def train_step(self, emb_node2vec, emb_pca,
+            mask_x, mask_edge, mask_index_node,  mask_index_edge, mask_both_node_edge, 
+                   tau=0.7,
+                   l1_e=4,l2_e=2,l12_e=6,
+                  l1_f=2,l2_f=5,l12_f=6,
+                l1_b=2,l2_b=3,l12_b=3,
+                  ):
+        z = self.encoder(mask_x, mask_edge)[-1]
+        recon_z1, recon_z2, recon_z3 = self.p1(z), self.p2(z), self.p3(z)
+
+        loss1_f = semi_loss(emb_node2vec[mask_index_node], recon_z1[mask_index_node], tau)
+        loss1_e = semi_loss(emb_node2vec[mask_index_edge], recon_z1[mask_index_edge], tau)
+        loss1_both = semi_loss(emb_node2vec[mask_both_node_edge], recon_z1[mask_both_node_edge], tau)
+
+        loss2_f = semi_loss(emb_pca[mask_index_node], recon_z2[mask_index_node], tau)
+        loss2_e = semi_loss(emb_pca[mask_index_edge], recon_z2[mask_index_edge], tau)
+        loss2_both = semi_loss(emb_pca[mask_both_node_edge], recon_z2[mask_both_node_edge], tau)
+    
+        loss12_f = semi_loss(torch.cat((emb_node2vec,emb_pca), 1)[mask_index_node], recon_z3[mask_index_node], tau)
+        loss12_e = semi_loss(torch.cat((emb_node2vec,emb_pca), 1)[mask_index_edge], recon_z3[mask_index_edge], tau)
+        loss12_both= semi_loss(torch.cat((emb_node2vec,emb_pca), 1)[mask_both_node_edge], recon_z3[mask_both_node_edge], tau)
+        
+        loss_e = l1_e * loss1_e + l2_e * loss2_e + l12_e * loss12_e
+        loss_f = l1_f * loss1_f + l2_f * loss2_f + l12_f * loss12_f
+        loss_both = l1_b * loss1_both + l1_b * loss2_both + l12_b * loss12_both
+
+        info_loss = loss_e.mean() + loss_f.mean() + loss_both.mean()
+
+        return info_loss
+
+
+
+def linear_probing_cv(x, y, test_ratio=0.1):
+    from sklearn.metrics import f1_score, accuracy_score
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.svm import SVC
+    from sklearn.model_selection import train_test_split, GridSearchCV
+    from sklearn.multiclass import OneVsRestClassifier
+    from sklearn.preprocessing import normalize, OneHotEncoder
+    def prob_to_one_hot(y_pred):
+        ret = np.zeros(y_pred.shape, bool)
+        indices = np.argmax(y_pred, axis=1)
+        for i in range(y_pred.shape[0]):
+            ret[i][indices[i]] = True
+        return ret
+
+    x = x.cpu().numpy()
+    y = y.cpu().numpy().reshape(-1, 1)
+    
+    onehot_encoder = OneHotEncoder(categories='auto').fit(y)
+    y = onehot_encoder.transform(y).toarray().astype(bool)
+
+    X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=test_ratio)
+    logreg = LogisticRegression(solver='liblinear')
+    c = 2.0 ** np.arange(-10, 10)
+
+    clf = GridSearchCV(estimator=OneVsRestClassifier(logreg),
+                       param_grid=dict(estimator__C=c), n_jobs=4, cv=5,
+                       verbose=0)
+    
+    clf.fit(X_train, y_train)
+
+    y_pred = clf.predict_proba(X_test)
+    y_pred = prob_to_one_hot(y_pred)
+    
+    micro = f1_score(y_test, y_pred, average="micro")
+    print(micro)
+    return [micro]
 
 
 def linear_probing(train_x, 
@@ -636,3 +710,4 @@ def linear_probing(train_x,
         results.append(best_test_metric)
             
     return results
+

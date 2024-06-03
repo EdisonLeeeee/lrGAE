@@ -9,7 +9,7 @@ python node_classification/s2gae.py
 python node_classification/graphmae.py
 python node_classification/graphmae2.py
 python node_classification/augmae.py
-
+python node_classification/gigamae.py
 ```
 
 # 链路预测

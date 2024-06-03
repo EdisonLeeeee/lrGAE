@@ -1,10 +1,7 @@
 import torch
 import torch.nn.functional as F
 import torch.nn as nn
-from torch_geometric.nn import (
-    Node2Vec,
-    Sequential,
-)
+from torch_geometric.nn import Sequential
 from torch_sparse import SparseTensor
 from lrgae.resolver import activation_resolver, normalization_resolver, layer_resolver
 
@@ -52,7 +49,8 @@ class GNNEncoder(nn.Module):
                                   second_channels, heads)
 
             block = []
-            block.append((nn.Dropout(dropout), 'x -> x'))
+            if dropout > 0:
+                block.append((nn.Dropout(dropout), 'x -> x'))
             block.append((conv, 'x, edge_index -> x'))
             if not is_last_layer or (is_last_layer and self.add_last_bn):
                 # whether to add last BN
@@ -79,103 +77,7 @@ class GNNEncoder(nn.Module):
             out.append(x)
         return out
 
-
-class FeedForwardNetwork(nn.Module):
-    def __init__(self, hidden_size, ffn_size, dropout_rate):
-        super(FeedForwardNetwork, self).__init__()
-
-        self.layer1 = nn.Linear(hidden_size, ffn_size)
-        self.gelu = nn.GELU()
-        self.layer2 = nn.Linear(ffn_size, hidden_size)
-
-    def forward(self, x):
-        x = self.layer1(x)
-        x = self.gelu(x)
-        x = self.layer2(x)
-        return x
-
-
-class MultiHeadAttention(nn.Module):
-    def __init__(self, hidden_size, attention_dropout_rate, num_heads):
-        super(MultiHeadAttention, self).__init__()
-
-        self.num_heads = num_heads
-
-        self.att_size = att_size = hidden_size // num_heads
-        self.scale = att_size ** -0.5
-
-        self.linear_q = nn.Linear(hidden_size, num_heads * att_size)
-        self.linear_k = nn.Linear(hidden_size, num_heads * att_size)
-        self.linear_v = nn.Linear(hidden_size, num_heads * att_size)
-        self.att_dropout = nn.Dropout(attention_dropout_rate)
-
-        self.output_layer = nn.Linear(num_heads * att_size, hidden_size)
-
-    def forward(self, q, k, v, attn_bias=None):
-        orig_q_size = q.size()
-
-        d_k = self.att_size
-        d_v = self.att_size
-        batch_size = q.size(0)
-
-        # head_i = Attention(Q(W^Q)_i, K(W^K)_i, V(W^V)_i)
-        q = self.linear_q(q).view(batch_size, -1, self.num_heads, d_k)
-        k = self.linear_k(k).view(batch_size, -1, self.num_heads, d_k)
-        v = self.linear_v(v).view(batch_size, -1, self.num_heads, d_v)
-
-        q = q.transpose(1, 2)                  # [b, h, q_len, d_k]
-        v = v.transpose(1, 2)                  # [b, h, v_len, d_v]
-        k = k.transpose(1, 2).transpose(2, 3)  # [b, h, d_k, k_len]
-
-        # Scaled Dot-Product Attention.
-        # Attention(Q, K, V) = softmax((QK^T)/sqrt(d_k))V
-        q = q * self.scale
-        x = torch.matmul(q, k)  # [b, h, q_len, k_len]
-        if attn_bias is not None:
-            x = x + attn_bias
-        x = torch.softmax(x, dim=3)
-        x = self.att_dropout(x)
-        x = x.matmul(v)  # [b, h, q_len, attn]
-
-        x = x.transpose(1, 2).contiguous()  # [b, q_len, h, attn]
-        x = x.view(batch_size, -1, self.num_heads * d_v)
-
-        x = self.output_layer(x)
-
-        assert x.size() == orig_q_size
-        return x
-
-
-class TransformerEncoder(nn.Module):
-    def __init__(self, hidden_size, ffn_size, dropout_rate, attention_dropout_rate, num_heads):
-        super(TransformerEncoder, self).__init__()
-
-        self.self_attention_norm = nn.LayerNorm(hidden_size)
-        self.self_attention = MultiHeadAttention(
-            hidden_size, attention_dropout_rate, num_heads)
-        self.self_attention_dropout = nn.Dropout(dropout_rate)
-
-        self.ffn_norm = nn.LayerNorm(hidden_size)
-        self.ffn = FeedForwardNetwork(hidden_size, ffn_size, dropout_rate)
-        self.ffn_dropout = nn.Dropout(dropout_rate)
-
-    def forward(self, x, attn_bias=None):
-        y = self.self_attention_norm(x)
-        y = self.self_attention(y, y, y, attn_bias)
-        y = self.self_attention_dropout(y)
-        x = x + y
-
-        y = self.ffn_norm(x)
-        y = self.ffn(y)
-        y = self.ffn_dropout(y)
-        x = x + y
-        return x
-
-
 class PCA(nn.Module):
-    def __init__(self):
-        super().__init__()
-
     def svd_flip(self, u, v):
         # columns of u, rows of v
         max_abs_cols = torch.argmax(torch.abs(u), 0)
@@ -219,13 +121,14 @@ class PCA(nn.Module):
         return pca_emb
 
 
-class NodeToVec(nn.Module):
+class Node2Vec(nn.Module):
     def __init__(self, data, embed_dim, walk_length,
                  context_size, walks_per_node,
                  num_negative_samples, p=1., q=1.):
         super().__init__()
+        from torch_geometric.nn import Node2Vec as n2v
         self.data = data
-        self.node2vec = Node2Vec(edge_index=data.edge_index,
+        self.node2vec = n2v(edge_index=data.edge_index,
                                  embedding_dim=embed_dim,
                                  walk_length=walk_length,
                                  context_size=context_size,
@@ -233,7 +136,9 @@ class NodeToVec(nn.Module):
                                  num_negative_samples=num_negative_samples,
                                  p=p, q=q, sparse=True)
 
-    def forward(self):
+    @torch.no_grad()
+    def get_embedding(self):
+        self.node2vec.eval()
         return self.node2vec()
 
     def fit(self, epochs, lr, batch_size, device="cpu"):
@@ -248,8 +153,4 @@ class NodeToVec(nn.Module):
                 loss = self.node2vec.loss(pos_rw.to(device), neg_rw.to(device))
                 loss.backward()
                 optimizer.step()
-
-    def target_generation(self):
-        self.eval()
-        return self.node2vec().detach()
 

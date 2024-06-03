@@ -58,7 +58,7 @@ class EdgeDecoder(nn.Module):
             second_channels = out_channels if is_last_layer else hidden_channels
             layer = layer_resolver("linear", first_channels, second_channels)
 
-            if not is_last_layer:
+            if not is_last_layer and dropout > 0:
                 network.append((nn.Dropout(dropout), "x -> x"))
             network.append((layer, "x -> x"))
             if not is_last_layer and norm != "none":
@@ -111,7 +111,7 @@ class FeatureDecoder(nn.Module):
             second_channels = out_channels if is_last_layer else hidden_channels
             layer = layer_resolver("linear", first_channels, second_channels)
 
-            if not is_last_layer:
+            if not is_last_layer and dropout > 0:
                 network.append((nn.Dropout(dropout), "x -> x"))
             network.append((layer, "x -> x"))
             
@@ -160,7 +160,7 @@ class CrossCorrelationDecoder(nn.Module):
             second_channels = out_channels if is_last_layer else hidden_channels
             layer = layer_resolver("linear", first_channels, second_channels)
 
-            if not is_last_layer:
+            if not is_last_layer and dropout > 0:
                 network.append((nn.Dropout(dropout), "x -> x"))
             network.append((layer, "x -> x"))
             if not is_last_layer and norm != "none":
