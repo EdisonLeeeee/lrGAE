@@ -202,6 +202,45 @@ class lrGAE(nn.Module):
         return {'auc': roc_auc_score(y, pred),
                 'ap': average_precision_score(y, pred)}
 
+class MaskGAE(lrGAE):
+    def __init__(
+        self,
+        encoder,
+        decoder,
+        mask,
+        degree_decoder,
+        loss="bce",
+    ):
+        super().__init__(encoder=encoder, decoder=decoder, mask=mask, loss=loss)
+        self.degree_decoder = degree_decoder
+
+    def reset_parameters(self):
+        self.encoder.reset_parameters()
+        self.decoder.reset_parameters()
+        self.degree_decoder.reset_parameters()
+        
+    def train_step(self, graph, alpha=0.):
+        remaining_graph, masked_graph = self.mask(graph)
+        x, remaining_edges = remaining_graph.x, remaining_graph.edge_index
+        masked_edges = masked_graph.edge_index
+        z = self.encoder(x, remaining_edges)
+        left = right = z[-1]
+
+        loss = self.loss_fn(left, right, masked_edges, positive=True)
+
+        neg_edges = random_negative_sampler(
+            num_nodes=remaining_graph.num_nodes,
+            num_neg_samples=masked_edges.size(1),
+            device=masked_edges.device,
+        )
+        
+        loss += self.loss_fn(left, right, neg_edges, positive=False)
+        if alpha > 0:
+            deg = degree(masked_edges[1].flatten(), graph.num_nodes).float()
+            deg = (deg - deg.mean()) / (deg.std() + 1e-6)
+            loss += alpha * F.mse_loss(self.degree_decoder(left).squeeze(), deg)            
+        return loss
+        
 class GraphMAE(lrGAE):
     def __init__(self, encoder, decoder, mask, neck, in_channels,
                  replace_rate=0.2, mask_rate=0.5,
