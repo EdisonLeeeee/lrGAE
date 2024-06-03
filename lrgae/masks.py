@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 try:
     import torch_cluster  # noqa
     random_walk = torch.ops.torch_cluster.random_walk
@@ -176,3 +177,16 @@ class NullMask(nn.Module):
         masked_graph = copy(data)
         masked_graph.mask = masked_graph.x.new_ones(masked_graph.x.size(0), 1, dtype=torch.bool)
         return copy(data), masked_graph
+
+
+class AdversMask(nn.Module):
+    def __init__(self, generator, fc_in_channels, fc_out_channels):
+        super().__init__()
+        self.generator = generator
+        self.fc = nn.Linear(fc_in_channels, fc_out_channels)
+
+    def forward(self, data):
+        x, edge_index = data.x, data.edge_index
+        x = self.generator(x, edge_index)[-1]
+        z = F.gumbel_softmax(self.fc(x), hard=True)
+        return z

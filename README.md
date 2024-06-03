@@ -8,6 +8,7 @@ python node_classification/maskgae.py
 python node_classification/s2gae.py
 python node_classification/graphmae.py
 python node_classification/graphmae2.py
+python node_classification/augmae.py
 
 ```
 

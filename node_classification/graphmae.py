@@ -19,7 +19,6 @@ from lrgae.models import GraphMAE
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--dataset", nargs="?", default="Cora", help="Datasets. (default: Cora)")
-parser.add_argument("--mask", nargs="?", default="node", help="Masking stractegy, `node`, or `none` (default: node)")
 parser.add_argument('--seed', type=int, default=2024, help='Random seed for model and dataset. (default: 2024)')
 
 parser.add_argument("--layer", nargs="?", default="gat", help="GNN layer, (default: gat)")
@@ -37,6 +36,7 @@ parser.add_argument("--decoder_norm", nargs="?", default="none", help="Normaliza
 
 parser.add_argument('--p', type=float, default=0.7, help='Mask ratio or sample ratio for MaskNode')
 parser.add_argument("--replace_rate", type=float, default=0.0)
+parser.add_argument("--alpha", type=float, default=3, help="`pow`coefficient for `sce` loss")
 
 parser.add_argument('--lr', type=float, default=0.0001, help='Learning rate for training. (default: 0.01)')
 parser.add_argument('--weight_decay', type=float, default=5e-5, help='weight_decay for link prediction training. (default: 5e-5)')
@@ -79,12 +79,6 @@ def main():
     ])
     data = get_dataset(root, args.dataset, transform=transform)
 
-    assert args.mask in ['node', 'none']
-    if args.mask == 'node':
-        mask = MaskFeature(p=args.p)
-    else:
-        mask = NullMask() # vanilla GAE
-
     num_heads = 8
     encoder = GNNEncoder(in_channels=data.num_features, 
                          hidden_channels=args.encoder_channels//num_heads, 
@@ -107,11 +101,11 @@ def main():
                          add_last_act=False,
                          add_last_bn=False)    
     
-    model = GraphMAE(encoder, decoder, mask, neck, data.x.size(1),
+    model = GraphMAE(encoder=encoder, decoder=decoder, neck=neck,
+                     alpha=args.alpha,
                      replace_rate=args.replace_rate,
                      mask_rate=args.p).to(device)
     print(model)
-    print(mask)
 
     best_metric = None
     optimizer = torch.optim.Adam(model.parameters(),

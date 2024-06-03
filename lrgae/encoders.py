@@ -34,6 +34,10 @@ class GNNEncoder(nn.Module):
         super().__init__()
 
         out_channels = out_channels or hidden_channels
+        self.in_channels = in_channels
+        self.hidden_channels = hidden_channels
+        self.out_channels = out_channels
+        self.num_layers = num_layers        
 
         self.add_last_act = add_last_act
         self.add_last_bn = add_last_bn
@@ -249,15 +253,3 @@ class NodeToVec(nn.Module):
         self.eval()
         return self.node2vec().detach()
 
-
-class AdversMask(nn.Module):
-    def __init__(self, generator, fc_in_channels, fc_out_channels):
-        super().__init__()
-        self.generator = generator
-        self.fc = nn.Linear(fc_in_channels, fc_out_channels)
-
-    def forward(self, x, edge_index):
-        x = self.generator(x, edge_index)[-1]
-        z = F.gumbel_softmax(self.fc(x), hard=True)
-
-        return z

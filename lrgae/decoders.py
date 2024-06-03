@@ -44,6 +44,10 @@ class EdgeDecoder(nn.Module):
         right=2,
     ):
         super().__init__()
+        self.in_channels = in_channels
+        self.hidden_channels = hidden_channels
+        self.out_channels = out_channels
+        self.num_layers = num_layers        
         self.left = left
         self.right = right
 
@@ -95,6 +99,11 @@ class FeatureDecoder(nn.Module):
         norm="none",
     ):
         super().__init__()
+        self.in_channels = in_channels
+        self.hidden_channels = hidden_channels
+        self.out_channels = out_channels
+        self.num_layers = num_layers
+        
         network = []
         for i in range(num_layers):
             is_last_layer = i == num_layers - 1
@@ -139,7 +148,11 @@ class CrossCorrelationDecoder(nn.Module):
         norm="none",
     ):
         super().__init__()
-
+        self.in_channels = in_channels
+        self.hidden_channels = hidden_channels
+        self.out_channels = out_channels
+        self.num_layers = num_layers
+        
         network = []
         for i in range(num_layers):
             is_last_layer = i == num_layers - 1
