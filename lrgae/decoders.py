@@ -143,7 +143,7 @@ class CrossCorrelationDecoder(nn.Module):
         network = []
         for i in range(num_layers):
             is_last_layer = i == num_layers - 1
-            first_channels = in_channels * left * right if i == 0 else hidden_channels
+            first_channels = -1 if i == 0 else hidden_channels
             second_channels = out_channels if is_last_layer else hidden_channels
             layer = layer_resolver("linear", first_channels, second_channels)
 

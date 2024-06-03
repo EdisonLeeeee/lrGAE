@@ -240,6 +240,35 @@ class MaskGAE(lrGAE):
             deg = (deg - deg.mean()) / (deg.std() + 1e-6)
             loss += alpha * F.mse_loss(self.degree_decoder(left).squeeze(), deg)            
         return loss
+
+class S2GAE(lrGAE):
+    def __init__(
+        self,
+        encoder,
+        decoder,
+        mask,
+        loss="bce",
+    ):
+        super().__init__(encoder=encoder, decoder=decoder, mask=mask, loss=loss)
+        
+    def train_step(self, graph):
+        remaining_graph, masked_graph = self.mask(graph)
+        x, remaining_edges = remaining_graph.x, remaining_graph.edge_index
+        masked_edges = masked_graph.edge_index
+        z = self.encoder(x, remaining_edges)
+        left = right = z[1:]
+
+        loss = self.loss_fn(left, right, masked_edges, positive=True)
+
+        neg_edges = random_negative_sampler(
+            num_nodes=remaining_graph.num_nodes,
+            num_neg_samples=masked_edges.size(1),
+            device=masked_edges.device,
+        )
+        
+        loss += self.loss_fn(left, right, neg_edges, positive=False)
+        return loss
+        
         
 class GraphMAE(lrGAE):
     def __init__(self, encoder, decoder, mask, neck, in_channels,
