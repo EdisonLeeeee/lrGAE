@@ -43,7 +43,10 @@ class FusedBCE(nn.Module):
             labels = torch.zeros_like(out)
         loss = F.binary_cross_entropy(out, labels)   
         return loss
-    
+        
+    def __repr__(self) -> str:
+        return f'{self.__class__.__name__}()'
+  
 class SCELoss(nn.Module):
     def __init__(self, alpha=3):
         super().__init__()

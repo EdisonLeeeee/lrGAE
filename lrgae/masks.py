@@ -114,8 +114,8 @@ class MaskPath(nn.Module):
                                                   num_nodes=self.num_nodes)
         remaining_graph = copy(data)
         masked_graph = copy(data)
-        remaining_graph.masked_edges = remaining_edges
-        masked_graph.masked_edges = masked_edges
+        remaining_graph.masked_edges = masked_edges
+        masked_graph.masked_edges = remaining_edges
         
         if self.undirected:
             remaining_edges = to_undirected(remaining_edges)        
@@ -143,8 +143,8 @@ class MaskEdge(nn.Module):
             
         remaining_graph = copy(data)
         masked_graph = copy(data)
-        remaining_graph.masked_edges = remaining_edges
-        masked_graph.masked_edges = masked_edges
+        remaining_graph.masked_edges = masked_edges
+        masked_graph.masked_edges = remaining_edges
         
         if self.undirected:
             remaining_edges = to_undirected(remaining_edges)        
@@ -164,16 +164,17 @@ class MaskFeature(nn.Module):
         
     def forward(self, data):
         edge_index = data.edge_index
+        # `mask` is the mask indicating the reserved nodes
         remaining_features, mask = mask_feature(data.x, p=self.p, mode='row')
         masked_features = data.x.masked_fill(mask, 0.0)
         # assert torch.allclose(data.x, remaining_features+masked_features)
         
         remaining_graph = copy(data)
         remaining_graph.x = remaining_features
-        remaining_graph.masked_nodes = mask
+        remaining_graph.masked_nodes = ~mask
         masked_graph = copy(data)
         masked_graph.x = masked_features
-        masked_graph.masked_nodes = ~mask
+        masked_graph.masked_nodes = mask
         return remaining_graph, masked_graph     
         
     def extra_repr(self):

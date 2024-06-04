@@ -38,13 +38,16 @@ class lrGAE(nn.Module):
         loss="bce",
         left=2,
         right=2,
+        view='AA',
     ):
         super().__init__()
+        assert view in ['AA', 'AB', 'BB']
         self.encoder = encoder
         self.decoder = decoder
         self.mask = mask
-        self.left = left[0] if isinstance(left, (list, tuple)) and len(left) == 1 else left
-        self.right = right[0] if isinstance(right, (list, tuple)) and len(right) == 1 else right
+        self.left = left
+        self.right = right
+        self.view = view
         
         if loss == "bce":
             self.loss_fn = FusedBCE(decoder)
@@ -70,60 +73,70 @@ class lrGAE(nn.Module):
     def forward(self, x, edge_index, **kwargs):
         return self.encoder(x, edge_index, **kwargs)
 
-    def train_step_feature(self, graph, same_view=False):
+    def train_step_feature(self, graph):
         remaining_graph, masked_graph = self.mask(graph)
         
-        if same_view:
-            # case A=B
+        # case A=B
+        if self.view == 'AA':
             masked_graph = remaining_graph
+        elif self.view == 'BB':
+            remaining_graph = masked_graph
+            
         remaining_features, remaining_edge_index = remaining_graph.x, remaining_graph.edge_index
         masked_features, masked_edge_index = masked_graph.x, masked_graph.edge_index
-        # here `remaining_edge_index` == `masked_edge_index` == `graph.edge_index`
-        masked_nodes = masked_graph.masked_nodes
+        # in most cases `remaining_edge_index` == `masked_edge_index` == `graph.edge_index`
+        masked_nodes = remaining_graph.masked_nodes
 
         if self.left > 0:
             zA = self.encoder(remaining_features, remaining_edge_index)
         else:
             zA = [remaining_features]
             
-        if self.right > 0:
-            zB = self.encoder(masked_features, masked_edge_index)
+        if self.view == 'AB':
+            if self.right > 0:
+                zB = self.encoder(masked_features, masked_edge_index)
+            else:
+                zB = [masked_features]
         else:
-            zB = [masked_features]
+            zB = zA
 
+        # TODO: deal with non-GNN decoder which does not return a list
         left = self.decoder(zA[self.left], remaining_edge_index)[-1] if self.left > 0 else zA[self.left]
         right = self.decoder(zB[self.right], masked_edge_index)[-1] if self.right > 0 else zB[self.right]
-        # left = self.decoder(zA[self.left], remaining_edge_index)[-1]
-        # right = masked_features        
         loss = self.loss_fn(left.masked_select(masked_nodes), right.masked_select(masked_nodes))     
         return loss
         
-    def train_step(self, graph, same_view=True):
+    def train_step(self, graph):
         remaining_graph, masked_graph = self.mask(graph)
+
+        # case A=B
+        if self.view == 'AA':
+            masked_graph = remaining_graph
+        elif self.view == 'BB':
+            remaining_graph = masked_graph
+
         remaining_features, remaining_edge_index = remaining_graph.x, remaining_graph.edge_index
-        masked_features, masked_edge_index = masked_graph.x, masked_graph.edge_index
-        
-        masked_edges = masked_graph.masked_edges
-        # here `masked_features` == `remaining_features` == `graph.x`
+        masked_features, masked_edge_index = masked_graph.x, masked_graph.edge_index        
+        # in most cases here `masked_features` == `remaining_features` == `graph.x`
+        masked_edges = remaining_graph.masked_edges
         
         zA = self.encoder(remaining_features, remaining_edge_index)
         
-        if same_view:
-            # case A=B
+        if self.left > 0:
+            zA = self.encoder(remaining_features, remaining_edge_index)
+        else:
+            zA = [remaining_features]
+
+        if self.view == 'AB':
+            if self.right > 0:
+                zB = self.encoder(masked_features, masked_edge_index)
+            else:
+                zB = [masked_features]
+        else:
             zB = zA
-        else:
-            # case A!=B
-            zB = self.encoder(masked_features, masked_edge_index)
-        
-        if isinstance(self.left, (list, tuple)):
-            left = [zA[l] for l in self.left]
-        else:
-            left = zA[self.left]
-            
-        if isinstance(self.right, (list, tuple)):
-            right = [zB[r] for r in self.right]
-        else:
-            right = zB[self.right]
+
+        left = zA[self.left]
+        right = zB[self.right]
 
         loss = self.loss_fn(left, right, masked_edges, positive=True)
 
@@ -232,6 +245,9 @@ class lrGAE(nn.Module):
         return {'auc': roc_auc_score(y, pred),
                 'ap': average_precision_score(y, pred)}
 
+    def extra_repr(self) -> str:
+        return f'Left={self.left}, Right={self.right}, View={self.view},'
+
 class MaskGAE(lrGAE):
     def __init__(
         self,
@@ -252,7 +268,8 @@ class MaskGAE(lrGAE):
     def train_step(self, graph, alpha=0.):
         remaining_graph, masked_graph = self.mask(graph)
         x, remaining_edge_index = remaining_graph.x, remaining_graph.edge_index
-        masked_edges = masked_graph.masked_edges
+        masked_edges = remaining_graph.masked_edges
+        
         z = self.encoder(x, remaining_edge_index)
         left = right = z[-1]
 
@@ -285,7 +302,7 @@ class S2GAE(lrGAE):
     def train_step(self, graph):
         remaining_graph, masked_graph = self.mask(graph)
         x, remaining_edge_index = remaining_graph.x, remaining_graph.edge_index
-        masked_edges = masked_graph.masked_edges
+        masked_edges = remaining_graph.masked_edges
         z = self.encoder(x, remaining_edge_index)
         left = right = z[1:]
 

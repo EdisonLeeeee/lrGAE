@@ -20,6 +20,7 @@ from lrgae.models import lrGAE
 parser = argparse.ArgumentParser()
 parser.add_argument("--dataset", nargs="?", default="Cora", help="Datasets. (default: Cora)")
 parser.add_argument("--mask", nargs="?", default="node", help="Masking stractegy, `node`, or `none` (default: node)")
+parser.add_argument("--view", nargs="?", default="AB", help="Contrastive graph views, `AA`, `AB` or `BB` (default: AA)")
 parser.add_argument('--seed', type=int, default=2022, help='Random seed for model and dataset. (default: 2022)')
 
 parser.add_argument("--layer", nargs="?", default="gat", help="GNN layer, (default: gat)")
@@ -35,8 +36,8 @@ parser.add_argument('--decoder_layers', type=int, default=1, help='Number of lay
 parser.add_argument('--decoder_dropout', type=float, default=0.2, help='Dropout probability of decoder. (default: 0.2)')
 parser.add_argument("--decoder_norm", nargs="?", default="none", help="Normalization (default: none)")
 
-parser.add_argument('--left', nargs='+', type=int, default=2, help='Left layer. (default: 2)')
-parser.add_argument('--right', nargs='+', type=int, default=2, help='Right layer. (default: 2)')
+parser.add_argument('--left', type=int, default=2, help='Left layer. (default: 2)')
+parser.add_argument('--right', type=int, default=2, help='Right layer. (default: 2)')
 parser.add_argument('--p', type=float, default=0.7, help='Mask ratio or sample ratio for MaskNode')
 
 parser.add_argument('--lr', type=float, default=0.0001, help='Learning rate for training. (default: 0.01)')
@@ -110,7 +111,8 @@ def main():
     model = lrGAE(encoder, decoder, mask,
                     loss='sce',
                     left=args.left,
-                    right=args.right).to(device)
+                    right=args.right, 
+                  view=args.view).to(device)
     print(model)
     print(mask)
 
