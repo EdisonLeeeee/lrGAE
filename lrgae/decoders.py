@@ -16,9 +16,7 @@ class DotProductEdgeDecoder(nn.Module):
     def reset_parameters(self):
         return
 
-    def forward(self, z, pairs, sigmoid=True):
-        left = z[self.left]
-        right = z[self.right]
+    def forward(self, left, right, pairs, sigmoid=True):
         x = left[pairs[0]] * right[pairs[1]]
         x = x.sum(-1)
 
@@ -179,11 +177,13 @@ class CrossCorrelationDecoder(nn.Module):
                 layer.reset_parameters()
 
     def forward(self, left, right, pairs, sigmoid=True):
-        assert isinstance(left, (list, tuple)) and isinstance(right, (list, tuple))
+        if not isinstance(left, (list, tuple)):
+            left = [left]
+        if not isinstance(right, (list, tuple)):
+            right = [right]
         xs = []
-        for l in left[1:]:
-            # starting from `1` for skipping the first input layer
-            for r in right[1:]:
+        for l in left:
+            for r in right:
                 xs.append(l[pairs[0]] * r[pairs[1]])
 
         x = torch.cat(xs, dim=-1)

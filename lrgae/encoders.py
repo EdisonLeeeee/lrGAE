@@ -3,6 +3,7 @@ import torch.nn.functional as F
 import torch.nn as nn
 from torch_geometric.nn import Sequential
 from torch_sparse import SparseTensor
+from torch_geometric.nn import Node2Vec as n2v
 from lrgae.resolver import activation_resolver, normalization_resolver, layer_resolver
 
 
@@ -126,7 +127,6 @@ class Node2Vec(nn.Module):
                  context_size, walks_per_node,
                  num_negative_samples, p=1., q=1.):
         super().__init__()
-        from torch_geometric.nn import Node2Vec as n2v
         self.data = data
         self.node2vec = n2v(edge_index=data.edge_index,
                                  embedding_dim=embed_dim,

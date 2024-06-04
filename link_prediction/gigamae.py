@@ -31,8 +31,8 @@ parser.add_argument("--encoder_norm", nargs="?", default="none", help="Normaliza
 
 parser.add_argument('--decoder_channels', type=int, default=32, help='Channels of decoder layers. (default: 32)')
 parser.add_argument("--decoder_activation", nargs="?", default="prelu", help="Activation function for GNN encoder, (default: prelu)")
-parser.add_argument('--decoder_layers', type=int, default=1, help='Number of layers for decoders. (default: 2)')
-parser.add_argument('--decoder_dropout', type=float, default=0.2, help='Dropout probability of decoder. (default: 0.2)')
+parser.add_argument('--decoder_layers', type=int, default=2, help='Number of layers for decoders. (default: 2)')
+parser.add_argument('--decoder_dropout', type=float, default=0., help='Dropout probability of decoder. (default: 0.)')
 parser.add_argument("--decoder_norm", nargs="?", default="none", help="Normalization (default: none)")
 
 parser.add_argument('--node_p', type=float, default=0.7, help='Mask ratio or sample ratio for MaskNode')
@@ -68,10 +68,6 @@ parser.add_argument('--lrdec_1', type=float, default=0.8)
 parser.add_argument('--lrdec_2', type=int, default=200)
 parser.add_argument('--weight_decay', type=float, default=0, help='weight_decay for link prediction training. (default: 0)')
 parser.add_argument('--grad_norm', type=float, default=1.0, help='grad_norm for training. (default: 1.0.)')
-
-parser.add_argument('--l2_normalize', action='store_true', help='Whether to use l2 normalize output embedding. (default: False)')
-parser.add_argument('--nodeclas_lr', type=float, default=0.01, help='Learning rate for training. (default: 0.01)')
-parser.add_argument('--nodeclas_weight_decay', type=float, default=5e-5, help='weight_decay for node classification training. (default: 1e-3)')
 
 parser.add_argument('--epochs', type=int, default=1500, help='Number of training epochs. (default: 500)')
 parser.add_argument('--runs', type=int, default=1, help='Number of runs. (default: 1)')
@@ -134,10 +130,13 @@ def main():
         # T.NormalizeFeatures(),
     ])
     data = get_dataset(root, args.dataset, transform=transform)
-
+    train_data, valid_data, test_data = T.RandomLinkSplit(num_val=0.05, num_test=0.1,
+                                                        is_undirected=True,
+                                                        split_labels=True,
+                                                        add_negative_train_samples=False)(data)    
 
     print("Node2Vec training...")
-    node2vec = Node2Vec(data=data, embed_dim=args.embedding_dim,
+    node2vec = Node2Vec(data=train_data, embed_dim=args.embedding_dim,
                          walk_length=args.walk_length,
                          context_size=args.context_size,
                          walks_per_node=args.walks_per_node,
@@ -152,7 +151,7 @@ def main():
     
     print("PCA training...")
     pca = PCA().to(device)
-    pca_embeds = pca(data.x, args.ratio)
+    pca_embeds = pca(train_data.x, args.ratio)
     
     num_heads = 4
     encoder = GNNEncoder(in_channels=data.num_features, 
@@ -187,11 +186,12 @@ def main():
     model = GiGaMAE(encoder=encoder, decoder=decoder).to(device)
     print(model)
 
-    best_metric = None
     optimizer = torch.optim.Adam(model.parameters(),
                                  lr=args.lr,
                                  weight_decay=args.weight_decay)    
     pbar = tqdm(range(1, 1 + args.epochs))
+    best_test_metric = None
+    best_valid_metric = None    
     for epoch in pbar:
 
         model.train()
@@ -199,11 +199,11 @@ def main():
         optimizer.zero_grad()
         adjust_learning_rate(optimizer=optimizer, epoch=epoch, args=args)
 
-        mask_x, mask_index_node_binary = mask_feature(data.x, args.node_p)
-        mask_edge, mask_index_edge = dropout_edge(data.edge_index, args.edge_p)
+        mask_x, mask_index_node_binary = mask_feature(train_data.x, args.node_p)
+        mask_edge, mask_index_edge = dropout_edge(train_data.edge_index, args.edge_p)
         
-        mask_edge_node = mask_index_edge * data.edge_index[0] 
-        mask_index_edge_binary = torch.zeros(data.x.shape[0]).to(device) 
+        mask_edge_node = mask_index_edge * train_data.edge_index[0] 
+        mask_index_edge_binary = torch.zeros(train_data.x.shape[0]).to(device) 
         mask_index_edge_binary[mask_edge_node] = 1
         mask_index_edge_binary = mask_index_edge_binary.to(bool)
         mask_both_node_edge = mask_index_edge_binary & mask_index_node_binary
@@ -222,26 +222,15 @@ def main():
         
         if epoch % args.eval_steps == 0:
             print(f'\nEvaluating on epoch {epoch}...')
-            # with torch.no_grad():
-            #     model.eval()
-            #     embedding = model(data.x, data.edge_index)[-1]
-            #     results = label_classification(embedding, data.y)
-            results = model.eval_nodeclas(data,
-                               lr=args.nodeclas_lr,
-                               weight_decay=args.nodeclas_weight_decay,
-                               l2_normalize=args.l2_normalize,
-                            mode='last',
-                               runs=args.runs,
-                               device=device)
-            if best_metric is None:
-                best_metric = results
-            for metric, value in results.items():
-                print(f'Averaged {metric}: {value:.2%}')
-                if best_metric[metric] < value:
-                    best_metric = results
-                
-    for metric, value in best_metric.items():
-        print(f'Best averaged {metric}: {value:.2%}')  
-
+            val_results = model.eval_linkpred(valid_data)  
+            valid_auc, valid_ap = val_results['auc'], val_results['ap']  
+            test_results = model.eval_linkpred(test_data)  
+            test_auc, test_ap = test_results['auc'], test_results['ap']                
+            if best_valid_metric is None or best_valid_metric[0] < valid_auc:
+                best_test_metric = test_auc, test_ap
+                best_valid_metric = valid_auc, valid_ap
+            print(f'Link prediction valid_auc: {valid_auc:.2%}, valid_ap: {valid_ap:.2%}')
+            print(f'Link prediction test_auc: {test_auc:.2%}, test_ap: {test_ap:.2%}') 
+    print(f'Final Link prediction test_auc: {best_test_metric[0]:.2%}, test_ap: {best_test_metric[1]:.2%}') 
 if __name__ == "__main__":
     main()

@@ -13,6 +13,7 @@ from tqdm import tqdm
 
 # custom modules
 from lrgae.loss import FusedBCE, info_nce_loss, log_rank_loss, hinge_auc_loss, auc_loss, semi_loss, SCELoss, uniformity_loss, simcse_loss
+from lrgae.decoders import EdgeDecoder, CrossCorrelationDecoder, DotProductEdgeDecoder
 
 
 def random_negative_sampler(num_nodes, num_neg_samples, device):
@@ -120,10 +121,16 @@ class lrGAE(nn.Module):
 
     @torch.no_grad()
     def batch_predict(self, left, right, edges, batch_size=2**16):
+        if isinstance(self.decoder, (EdgeDecoder, CrossCorrelationDecoder)):
+            decoder = self.decoder 
+        else:
+            if left.size() != right.size():
+                right = left
+            decoder = DotProductEdgeDecoder()
         preds = []
         for edge in DataLoader(TensorDataset(edges.t()), batch_size=batch_size):
             edge = edge[0].t()
-            preds.append(self.decoder(left, right, edge).squeeze())
+            preds.append(decoder(left, right, edge).squeeze())
         pred = torch.cat(preds, dim=0)
         return pred.cpu()
         
@@ -131,8 +138,14 @@ class lrGAE(nn.Module):
     def test_step(self, data, pos_edge_index, neg_edge_index, batch_size=2**16):
         self.eval()
         z = self(data.x, data.edge_index)
-        left = z[self.left]
-        right = z[self.right]
+        if isinstance(self.left, (list, tuple)):
+            left = [z[l] for l in self.left]
+        else:
+            left = z[self.left]
+        if isinstance(self.right, (list, tuple)):
+            right = [z[r] for r in self.right]
+        else:
+            right = z[self.right]
         pos_pred = self.batch_predict(left, right, pos_edge_index)
         neg_pred = self.batch_predict(left, right, neg_edge_index)
 
@@ -211,7 +224,7 @@ class MaskGAE(lrGAE):
         degree_decoder,
         loss="bce",
     ):
-        super().__init__(encoder=encoder, decoder=decoder, mask=mask, loss=loss)
+        super().__init__(encoder=encoder, decoder=decoder, mask=mask, loss=loss, left=encoder.num_layers, right=encoder.num_layers,)
         self.degree_decoder = degree_decoder
 
     def reset_parameters(self):
@@ -249,7 +262,8 @@ class S2GAE(lrGAE):
         mask,
         loss="bce",
     ):
-        super().__init__(encoder=encoder, decoder=decoder, mask=mask, loss=loss)
+        encoder_layers = encoder.num_layers
+        super().__init__(encoder=encoder, decoder=decoder, mask=mask, loss=loss, left=list(range(1, encoder_layers+1)), right=list(range(1, encoder_layers+1)))
         
     def train_step(self, graph):
         remaining_graph, masked_graph = self.mask(graph)
@@ -274,7 +288,7 @@ class GraphMAE(lrGAE):
     def __init__(self, encoder, decoder, neck,
                  replace_rate=0.2, mask_rate=0.5,
                  alpha=1):
-        super().__init__(encoder=encoder, decoder=decoder, loss='sce')
+        super().__init__(encoder=encoder, decoder=decoder, loss='sce', left=encoder.num_layers, right=0)
         self.neck = neck
         self.enc_mask_token = nn.Parameter(torch.zeros(1, encoder.in_channels))
         
@@ -335,7 +349,7 @@ class GraphMAE(lrGAE):
 class AUGMAE(lrGAE):
     def __init__(self, encoder, decoder, neck, uniformity_layer, 
                  alpha=1, replace_rate=0., mask_rate=0.5,):
-        super().__init__(encoder=encoder, decoder=decoder, mask=None, loss='sce')
+        super().__init__(encoder=encoder, decoder=decoder, mask=None, loss='sce', left=encoder.num_layers, right=0)
         self.neck = neck
         self.uniformity_layer = uniformity_layer 
         self.enc_mask_token = nn.Parameter(torch.zeros(1, encoder.in_channels))
@@ -438,7 +452,7 @@ class GraphMAE2(lrGAE):
                  replace_rate=0.2, mask_rate=0.5,
                  remask_rate=0.5, remask_method="random",
                  alpha=1, lambd=1, momentum=0.996,):
-        super().__init__(encoder=encoder, decoder=decoder, mask=None, loss='sce')
+        super().__init__(encoder=encoder, decoder=decoder, mask=None, loss='sce', left=encoder.num_layers, right=0)
         self.neck = neck
         self.enc_mask_token = nn.Parameter(torch.zeros(1, encoder.in_channels))
         self.dec_mask_token = nn.Parameter(torch.zeros(1, encoder.out_channels))
@@ -577,7 +591,7 @@ class GraphMAE2(lrGAE):
 
 class GiGaMAE(lrGAE):
     def __init__(self, encoder, decoder):
-        super().__init__(encoder=encoder, decoder=decoder)
+        super().__init__(encoder=encoder, decoder=decoder, left=encoder.num_layers, right=0)
         self.p1, self.p2, self.p3 = decoder[0], decoder[1], decoder[2]
 
     def train_step(self, emb_node2vec, emb_pca,

@@ -42,10 +42,6 @@ parser.add_argument('--alpha', type=float, default=0.001, help='loss weight for 
 parser.add_argument("--start", nargs="?", default="node", help="Which Type to sample starting nodes for random walks, (default: node)")
 parser.add_argument('--p', type=float, default=0.7, help='Mask ratio or sample ratio for MaskEdge/MaskPath')
 
-parser.add_argument('--l2_normalize', action='store_true', help='Whether to use l2 normalize output embedding. (default: False)')
-parser.add_argument('--nodeclas_lr', type=float, default=0.01, help='Learning rate for training. (default: 0.01)')
-parser.add_argument('--nodeclas_weight_decay', type=float, default=5e-5, help='weight_decay for node classification training. (default: 1e-3)')
-
 parser.add_argument('--epochs', type=int, default=500, help='Number of training epochs. (default: 500)')
 parser.add_argument('--runs', type=int, default=1, help='Number of runs. (default: 1)')
 parser.add_argument('--eval_steps', type=int, default=50, help='(default: 50)')
@@ -77,7 +73,11 @@ def main():
         T.ToDevice(device),
     ])
     data = get_dataset(root, args.dataset, transform=transform)
-
+    train_data, valid_data, test_data = T.RandomLinkSplit(num_val=0.05, num_test=0.1,
+                                                        is_undirected=True,
+                                                        split_labels=True,
+                                                        add_negative_train_samples=False)(data)    
+    
     assert args.mask in ['path', 'edge', 'none']
     if args.mask == 'path':
         mask = MaskPath(p=args.p, 
@@ -117,11 +117,12 @@ def main():
                                  lr=args.lr,
                                  weight_decay=args.weight_decay)    
     pbar = tqdm(range(1, 1 + args.epochs))
+    best_test_metric = None
+    best_valid_metric = None    
     for epoch in pbar:
-    
         optimizer.zero_grad()
         model.train()
-        loss = model.train_step(data, alpha=args.alpha)
+        loss = model.train_step(train_data, alpha=args.alpha)
         loss.backward()
         if args.grad_norm > 0:
             # gradient clipping
@@ -131,21 +132,16 @@ def main():
 
         if epoch % args.eval_steps == 0:
             print(f'\nEvaluating on epoch {epoch}...')
-            results = model.eval_nodeclas(data,
-                               lr=args.nodeclas_lr,
-                               weight_decay=args.nodeclas_weight_decay,
-                               l2_normalize=args.l2_normalize,
-                               runs=args.runs,
-                               device=device)
-            if best_metric is None:
-                best_metric = results
-            for metric, value in results.items():
-                print(f'Averaged {metric}: {value:.2%}')
-                if best_metric[metric] < value:
-                    best_metric = results
-                
-    for metric, value in best_metric.items():
-        print(f'Best averaged {metric}: {value:.2%}')             
+            val_results = model.eval_linkpred(valid_data)  
+            valid_auc, valid_ap = val_results['auc'], val_results['ap']  
+            test_results = model.eval_linkpred(test_data)  
+            test_auc, test_ap = test_results['auc'], test_results['ap']                
+            if best_valid_metric is None or best_valid_metric[0] < valid_auc:
+                best_test_metric = test_auc, test_ap
+                best_valid_metric = valid_auc, valid_ap
+            print(f'Link prediction valid_auc: {valid_auc:.2%}, valid_ap: {valid_ap:.2%}')
+            print(f'Link prediction test_auc: {test_auc:.2%}, test_ap: {test_ap:.2%}') 
+    print(f'Final Link prediction test_auc: {best_test_metric[0]:.2%}, test_ap: {best_test_metric[1]:.2%}')      
 
 if __name__ == "__main__":
     main()

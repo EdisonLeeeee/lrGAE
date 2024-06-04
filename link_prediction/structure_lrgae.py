@@ -114,13 +114,14 @@ def main():
                     left=args.left,
                     right=args.right).to(device)
     print(model)
-    print(mask)
 
     optimizer = torch.optim.Adam(model.parameters(),
                                  lr=args.lr,
                                  weight_decay=args.weight_decay)    
     
     pbar = tqdm(range(1, 1 + args.epochs))
+    best_test_metric = None
+    best_valid_metric = None    
     for epoch in pbar:
         optimizer.zero_grad()
         model.train()
@@ -138,8 +139,11 @@ def main():
             valid_auc, valid_ap = val_results['auc'], val_results['ap']  
             test_results = model.eval_linkpred(test_data)  
             test_auc, test_ap = test_results['auc'], test_results['ap']                
+            if best_valid_metric is None or best_valid_metric[0] < valid_auc:
+                best_test_metric = test_auc, test_ap
+                best_valid_metric = valid_auc, valid_ap
             print(f'Link prediction valid_auc: {valid_auc:.2%}, valid_ap: {valid_ap:.2%}')
-            print(f'Link prediction test_auc: {test_auc:.2%}, test_ap: {test_ap:.2%}')
-
+            print(f'Link prediction test_auc: {test_auc:.2%}, test_ap: {test_ap:.2%}') 
+    print(f'Final Link prediction test_auc: {best_test_metric[0]:.2%}, test_ap: {best_test_metric[1]:.2%}') 
 if __name__ == "__main__":
     main()

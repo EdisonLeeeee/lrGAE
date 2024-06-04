@@ -48,7 +48,7 @@ parser.add_argument('--nodeclas_lr', type=float, default=0.01, help='Learning ra
 parser.add_argument('--nodeclas_weight_decay', type=float, default=5e-5, help='weight_decay for node classification training. (default: 1e-3)')
 
 parser.add_argument('--epochs', type=int, default=1500, help='Number of training epochs. (default: 500)')
-parser.add_argument('--runs', type=int, default=10, help='Number of runs. (default: 10)')
+parser.add_argument('--runs', type=int, default=1, help='Number of runs. (default: 1)')
 parser.add_argument('--eval_steps', type=int, default=50, help='(default: 50)')
 parser.add_argument("--device", type=int, default=0)
 

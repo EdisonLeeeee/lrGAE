@@ -19,7 +19,6 @@ from lrgae.models import S2GAE
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--dataset", nargs="?", default="Cora", help="Datasets. (default: Cora)")
-parser.add_argument("--mask", nargs="?", default="edge", help="Masking stractegy, `edge` or `None` (default: edge)")
 parser.add_argument('--seed', type=int, default=2022, help='Random seed for model and dataset. (default: 2022)')
 
 parser.add_argument("--layer", nargs="?", default="gcn", help="GNN layer, (default: gcn)")
@@ -77,11 +76,7 @@ def main():
     ])
     data = get_dataset(root, args.dataset, transform=transform)
 
-    assert args.mask in ['edge', 'none']
-    if args.mask == 'edge':
-        mask = MaskEdge(p=args.p, undirected=args.undirected)
-    else:
-        mask = NullMask() # vanilla GAE
+    mask = MaskEdge(p=args.p, undirected=args.undirected)
 
     encoder = GNNEncoder(in_channels=data.num_features, 
                          hidden_channels=args.encoder_channels, 
