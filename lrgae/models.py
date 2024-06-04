@@ -70,11 +70,16 @@ class lrGAE(nn.Module):
     def forward(self, x, edge_index, **kwargs):
         return self.encoder(x, edge_index, **kwargs)
 
-    def train_step_feature(self, graph):
+    def train_step_feature(self, graph, same_view=False):
         remaining_graph, masked_graph = self.mask(graph)
+        
+        if same_view:
+            # case A=B
+            masked_graph = remaining_graph
         remaining_features, remaining_edge_index = remaining_graph.x, remaining_graph.edge_index
         masked_features, masked_edge_index = masked_graph.x, masked_graph.edge_index
-        mask = masked_graph.mask
+        # here `remaining_edge_index` == `masked_edge_index` == `graph.edge_index`
+        masked_nodes = masked_graph.masked_nodes
 
         if self.left > 0:
             zA = self.encoder(remaining_features, remaining_edge_index)
@@ -90,28 +95,40 @@ class lrGAE(nn.Module):
         right = self.decoder(zB[self.right], masked_edge_index)[-1] if self.right > 0 else zB[self.right]
         # left = self.decoder(zA[self.left], remaining_edge_index)[-1]
         # right = masked_features        
-        loss = self.loss_fn(left.masked_select(mask), right.masked_select(mask))     
+        loss = self.loss_fn(left.masked_select(masked_nodes), right.masked_select(masked_nodes))     
         return loss
         
-    def train_step(self, graph):
+    def train_step(self, graph, same_view=True):
         remaining_graph, masked_graph = self.mask(graph)
-        x, remaining_edges = remaining_graph.x, remaining_graph.edge_index
-        masked_edges = masked_graph.edge_index
-        z = self.encoder(x, remaining_edges)
+        remaining_features, remaining_edge_index = remaining_graph.x, remaining_graph.edge_index
+        masked_features, masked_edge_index = masked_graph.x, masked_graph.edge_index
+        
+        masked_edges = masked_graph.masked_edges
+        # here `masked_features` == `remaining_features` == `graph.x`
+        
+        zA = self.encoder(remaining_features, remaining_edge_index)
+        
+        if same_view:
+            # case A=B
+            zB = zA
+        else:
+            # case A!=B
+            zB = self.encoder(masked_features, masked_edge_index)
         
         if isinstance(self.left, (list, tuple)):
-            left = [z[l] for l in self.left]
+            left = [zA[l] for l in self.left]
         else:
-            left = z[self.left]
+            left = zA[self.left]
+            
         if isinstance(self.right, (list, tuple)):
-            right = [z[r] for r in self.right]
+            right = [zB[r] for r in self.right]
         else:
-            right = z[self.right]
+            right = zB[self.right]
 
         loss = self.loss_fn(left, right, masked_edges, positive=True)
 
         neg_edges = random_negative_sampler(
-            num_nodes=remaining_graph.num_nodes,
+            num_nodes=graph.num_nodes,
             num_neg_samples=masked_edges.size(1),
             device=masked_edges.device,
         )
@@ -234,15 +251,15 @@ class MaskGAE(lrGAE):
         
     def train_step(self, graph, alpha=0.):
         remaining_graph, masked_graph = self.mask(graph)
-        x, remaining_edges = remaining_graph.x, remaining_graph.edge_index
-        masked_edges = masked_graph.edge_index
-        z = self.encoder(x, remaining_edges)
+        x, remaining_edge_index = remaining_graph.x, remaining_graph.edge_index
+        masked_edges = masked_graph.masked_edges
+        z = self.encoder(x, remaining_edge_index)
         left = right = z[-1]
 
         loss = self.loss_fn(left, right, masked_edges, positive=True)
 
         neg_edges = random_negative_sampler(
-            num_nodes=remaining_graph.num_nodes,
+            num_nodes=graph.num_nodes,
             num_neg_samples=masked_edges.size(1),
             device=masked_edges.device,
         )
@@ -267,15 +284,15 @@ class S2GAE(lrGAE):
         
     def train_step(self, graph):
         remaining_graph, masked_graph = self.mask(graph)
-        x, remaining_edges = remaining_graph.x, remaining_graph.edge_index
-        masked_edges = masked_graph.edge_index
-        z = self.encoder(x, remaining_edges)
+        x, remaining_edge_index = remaining_graph.x, remaining_graph.edge_index
+        masked_edges = masked_graph.masked_edges
+        z = self.encoder(x, remaining_edge_index)
         left = right = z[1:]
 
         loss = self.loss_fn(left, right, masked_edges, positive=True)
 
         neg_edges = random_negative_sampler(
-            num_nodes=remaining_graph.num_nodes,
+            num_nodes=graph.num_nodes,
             num_neg_samples=masked_edges.size(1),
             device=masked_edges.device,
         )

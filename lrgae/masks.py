@@ -112,13 +112,17 @@ class MaskPath(nn.Module):
                                                   walk_length=self.walk_length,
                                                   start=self.start,
                                                   num_nodes=self.num_nodes)
-        if self.undirected:
-            remaining_edges = to_undirected(remaining_edges)
-            
         remaining_graph = copy(data)
-        remaining_graph.edge_index = remaining_edges
         masked_graph = copy(data)
+        remaining_graph.masked_edges = remaining_edges
+        masked_graph.masked_edges = masked_edges
+        
+        if self.undirected:
+            remaining_edges = to_undirected(remaining_edges)        
+            masked_edges = to_undirected(masked_edges)        
+            
         masked_graph.edge_index = masked_edges
+        remaining_graph.edge_index = remaining_edges
         return remaining_graph, masked_graph
 
     def extra_repr(self):
@@ -135,13 +139,19 @@ class MaskEdge(nn.Module):
     def forward(self, data):
         edge_index = data.edge_index
         remaining_edges, masked_edges = mask_edge(edge_index, p=self.p)
-        if self.undirected:
-            remaining_edges = to_undirected(remaining_edges)
+
             
         remaining_graph = copy(data)
-        remaining_graph.edge_index = remaining_edges
         masked_graph = copy(data)
+        remaining_graph.masked_edges = remaining_edges
+        masked_graph.masked_edges = masked_edges
+        
+        if self.undirected:
+            remaining_edges = to_undirected(remaining_edges)        
+            masked_edges = to_undirected(masked_edges)        
+            
         masked_graph.edge_index = masked_edges
+        remaining_graph.edge_index = remaining_edges
         return remaining_graph, masked_graph
 
     def extra_repr(self):
@@ -160,10 +170,10 @@ class MaskFeature(nn.Module):
         
         remaining_graph = copy(data)
         remaining_graph.x = remaining_features
-        remaining_graph.mask = mask
+        remaining_graph.masked_nodes = mask
         masked_graph = copy(data)
         masked_graph.x = masked_features
-        masked_graph.mask = ~mask
+        masked_graph.masked_nodes = ~mask
         return remaining_graph, masked_graph     
         
     def extra_repr(self):
