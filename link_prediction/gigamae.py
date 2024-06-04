@@ -99,10 +99,6 @@ def dropout_edge(edge_index, edge_p):
 
     return edge_index.long(), mask
 
-def adjust_learning_rate(optimizer, epoch, args):
-    lr = args.lr * (args.lrdec_1 ** (epoch // args.lrdec_2))
-    for param_group in optimizer.param_groups:
-        param_group['lr'] = lr
         
 def main():
 
@@ -197,7 +193,6 @@ def main():
         model.train()
 
         optimizer.zero_grad()
-        adjust_learning_rate(optimizer=optimizer, epoch=epoch, args=args)
 
         mask_x, mask_index_node_binary = mask_feature(train_data.x, args.node_p)
         mask_edge, mask_index_edge = dropout_edge(train_data.edge_index, args.edge_p)
