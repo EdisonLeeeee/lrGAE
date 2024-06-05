@@ -1,18 +1,20 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
 try:
     import torch_cluster  # noqa
     random_walk = torch.ops.torch_cluster.random_walk
 except ImportError:
     random_walk = None
     
+from copy import copy
 from typing import Optional, Tuple
 
 from torch import Tensor
-from torch_geometric.utils import to_undirected, sort_edge_index, degree
+from torch_geometric.utils import degree, sort_edge_index, to_undirected
 from torch_geometric.utils.num_nodes import maybe_num_nodes
-from copy import copy
+
 
 def mask_path(edge_index: Tensor, p: float = 0.3, walks_per_node: int = 1,
               walk_length: int = 3, num_nodes: Optional[int] = None,

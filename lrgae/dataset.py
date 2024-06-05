@@ -1,7 +1,8 @@
 import os.path as osp
+
 import torch_geometric.transforms as T
-from torch_geometric.datasets import Amazon, Coauthor, Planetoid, Reddit
 from torch_geometric.data import Data
+from torch_geometric.datasets import Amazon, Coauthor, Planetoid, Reddit
 from torch_geometric.utils import index_to_mask
 
 

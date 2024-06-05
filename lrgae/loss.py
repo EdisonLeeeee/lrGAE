@@ -2,6 +2,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
+
 def cosine_similarity(z1, z2):
     assert z1.size() == z2.size()
     z1 = F.normalize(z1, p=2, dim=1)

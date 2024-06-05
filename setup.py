@@ -1,7 +1,4 @@
-import os.path as osp
-
 from setuptools import find_packages, setup
-
 
 VERSION = '0.1.0'
 url = 'https://github.com/EdisonLeeeee/lrGAE'
@@ -10,8 +7,6 @@ install_requires = [
     'tqdm',
     'scipy',
     'numpy',
-    'tabulate',
-    'pandas',
     'scikit_learn',
     'torch_geometric',
 ]
@@ -21,6 +16,8 @@ full_requires = [
     'pandas',
     'matplotlib',
     'networkx>=2.3',
+    'texttable',
+    'pandas',
     # 'gensim>=3.8.0',
 ]
 
@@ -61,13 +58,13 @@ setup(
     packages=find_packages(exclude=("examples", "imgs", "benchmark", "test")),
     classifiers=[
         'Development Status :: 3 - Alpha',
-    "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3 :: Only",
+        "License :: OSI Approved :: MIT License",
+        "Programming Language :: Python",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3 :: Only",
     ],
 )

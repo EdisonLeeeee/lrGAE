@@ -1,19 +1,21 @@
-import numpy as np
 import copy
 import math
+
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
-from torch_geometric.utils import add_self_loops, negative_sampling, degree
-from torch_sparse import SparseTensor
-from torch.utils.data import DataLoader, TensorDataset
-from sklearn.metrics import roc_auc_score, average_precision_score
-from tqdm import tqdm
-
+from lrgae.decoders import (CrossCorrelationDecoder, DotProductEdgeDecoder,
+                            EdgeDecoder)
 # custom modules
-from lrgae.loss import FusedBCE, info_nce_loss, log_rank_loss, hinge_auc_loss, auc_loss, semi_loss, SCELoss, uniformity_loss, simcse_loss
-from lrgae.decoders import EdgeDecoder, CrossCorrelationDecoder, DotProductEdgeDecoder
+from lrgae.loss import (FusedBCE, SCELoss, auc_loss, hinge_auc_loss,
+                        info_nce_loss, log_rank_loss, semi_loss, simcse_loss,
+                        uniformity_loss)
+from sklearn.metrics import average_precision_score, roc_auc_score
+from torch.utils.data import DataLoader, TensorDataset
+from torch_geometric.utils import add_self_loops, degree, negative_sampling
+from torch_sparse import SparseTensor
+from tqdm import tqdm
 
 
 def random_negative_sampler(num_nodes, num_neg_samples, device):
@@ -661,12 +663,12 @@ class GiGaMAE(lrGAE):
 
 
 def linear_probing_cv(x, y, test_ratio=0.1):
-    from sklearn.metrics import f1_score, accuracy_score
     from sklearn.linear_model import LogisticRegression
-    from sklearn.svm import SVC
-    from sklearn.model_selection import train_test_split, GridSearchCV
+    from sklearn.metrics import accuracy_score, f1_score
+    from sklearn.model_selection import GridSearchCV, train_test_split
     from sklearn.multiclass import OneVsRestClassifier
-    from sklearn.preprocessing import normalize, OneHotEncoder
+    from sklearn.preprocessing import OneHotEncoder, normalize
+    from sklearn.svm import SVC
     def prob_to_one_hot(y_pred):
         ret = np.zeros(y_pred.shape, bool)
         indices = np.argmax(y_pred, axis=1)

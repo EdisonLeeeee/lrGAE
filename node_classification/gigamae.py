@@ -1,21 +1,18 @@
 import argparse
-import numpy as np
 
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch_geometric.transforms as T
-from tqdm.auto import tqdm
-
-from torch.utils.data import DataLoader
-
 # custom modules
 from lrgae.dataset import get_dataset
-from lrgae.utils import set_seed, tab_printer
-from lrgae.encoders import GNNEncoder, PCA, Node2Vec
-from lrgae.decoders import EdgeDecoder, CrossCorrelationDecoder, FeatureDecoder
+from lrgae.decoders import CrossCorrelationDecoder, EdgeDecoder, FeatureDecoder
+from lrgae.encoders import PCA, GNNEncoder, Node2Vec
 from lrgae.masks import MaskFeature, NullMask
 from lrgae.models import GiGaMAE
+from lrgae.utils import set_seed, tab_printer
+from tqdm.auto import tqdm
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--dataset", nargs="?", default="Cora", help="Datasets. (default: Cora)")

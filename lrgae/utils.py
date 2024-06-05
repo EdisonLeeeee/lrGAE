@@ -1,8 +1,10 @@
 import os
-import torch
 import random
+
 import numpy as np
+import torch
 from texttable import Texttable
+
 
 def set_seed(seed: int):
     random.seed(seed)

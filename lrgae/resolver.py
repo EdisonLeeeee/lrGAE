@@ -1,19 +1,11 @@
-from typing import Any, Union, Optional
+from typing import Any, Optional, Union
 
 import torch
 from torch import Tensor
-
-
+from torch_geometric.nn import (GATConv, GATv2Conv, GCNConv, GINConv, Linear,
+                                SAGEConv)
 from torch_geometric.resolver import resolver
 
-from torch_geometric.nn import (
-    Linear,
-    GCNConv,
-    SAGEConv,
-    GATConv,
-    GINConv,
-    GATv2Conv,
-)
 
 def swish(x: Tensor) -> Tensor:
     return x * x.sigmoid()
