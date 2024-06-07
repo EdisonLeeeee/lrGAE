@@ -187,9 +187,10 @@ class NullMask(nn.Module):
         super().__init__()
         
     def forward(self, data):
-        masked_graph = copy(data)
-        masked_graph.mask = masked_graph.x.new_ones(masked_graph.x.size(0), 1, dtype=torch.bool)
-        return copy(data), masked_graph
+        remaining_graph = copy(data)
+        remaining_graph.masked_nodes = data.x.new_ones(data.x.size(0), 1, dtype=torch.bool)
+        remaining_graph.masked_edges = data.edge_index
+        return remaining_graph, copy(data)
 
 
 class AdversMask(nn.Module):

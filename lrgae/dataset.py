@@ -7,6 +7,8 @@ from torch_geometric.utils import index_to_mask
 
 
 def get_dataset(root: str, name: str, transform=None) -> Data:
+    if transform is None:
+        transform = lambda x: x
     if name in {'arxiv', 'products', 'mag'}:
         from ogb.nodeproppred import PygNodePropPredDataset
         print('loading ogb dataset...')

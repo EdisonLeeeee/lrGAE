@@ -14,14 +14,14 @@ from lrgae.utils import set_seed, tab_printer
 from tqdm.auto import tqdm
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--dataset", nargs="?", default="Cora",
+parser.add_argument("--dataset", default="Cora",
                     help="Datasets. (default: Cora)")
-parser.add_argument('--seed', type=int, default=2022,
-                    help='Random seed for model and dataset. (default: 2022)')
+parser.add_argument('--seed', type=int, default=2024,
+                    help='Random seed for model and dataset. (default: 2024)')
 
-parser.add_argument("--layer", nargs="?", default="gcn",
+parser.add_argument("--layer", default="gcn",
                     help="GNN layer, (default: gcn)")
-parser.add_argument("--encoder_activation", nargs="?", default="relu",
+parser.add_argument("--encoder_activation", default="relu",
                     help="Activation function for GNN encoder, (default: relu)")
 parser.add_argument('--encoder_channels', type=int, default=128,
                     help='Channels of hidden representation. (default: 128)')
@@ -29,7 +29,7 @@ parser.add_argument('--encoder_layers', type=int, default=2,
                     help='Number of layers for encoder. (default: 2)')
 parser.add_argument('--encoder_dropout', type=float, default=0.,
                     help='Dropout probability of encoder. (default: 0.5)')
-parser.add_argument("--encoder_norm", nargs="?",
+parser.add_argument("--encoder_norm",
                     default="none", help="Normalization (default: none)")
 
 parser.add_argument('--decoder_channels', type=int, default=256,
@@ -38,7 +38,7 @@ parser.add_argument('--decoder_layers', type=int, default=3,
                     help='Number of layers for decoders. (default: 3)')
 parser.add_argument('--decoder_dropout', type=float, default=0.,
                     help='Dropout probability of decoder. (default: 0.5)')
-parser.add_argument("--decoder_norm", nargs="?",
+parser.add_argument("--decoder_norm",
                     default="none", help="Normalization (default: none)")
 
 parser.add_argument('--lr', type=float, default=0.001,
@@ -55,8 +55,6 @@ parser.add_argument('--undirected', action='store_true',
 
 parser.add_argument('--epochs', type=int, default=500,
                     help='Number of training epochs. (default: 500)')
-parser.add_argument('--runs', type=int, default=1,
-                    help='Number of runs. (default: 1)')
 parser.add_argument('--eval_steps', type=int, default=50, help='(default: 50)')
 parser.add_argument("--device", type=int, default=0)
 
@@ -65,7 +63,6 @@ def main():
 
     try:
         args = parser.parse_args()
-        print(tab_printer(args))
     except:
         parser.print_help()
         exit(0)
@@ -109,8 +106,6 @@ def main():
                                       norm=args.decoder_norm)
 
     model = S2GAE(encoder, decoder, mask).to(device)
-    print(model)
-
     optimizer = torch.optim.Adam(model.parameters(),
                                  lr=args.lr,
                                  weight_decay=args.weight_decay)
@@ -142,8 +137,7 @@ def main():
                 f'Link prediction valid_auc: {valid_auc:.2%}, valid_ap: {valid_ap:.2%}')
             print(
                 f'Link prediction test_auc: {test_auc:.2%}, test_ap: {test_ap:.2%}')
-    print(
-        f'Final Link prediction test_auc: {best_test_metric[0]:.2%}, test_ap: {best_test_metric[1]:.2%}')
+    print(f'Link prediction on {args.dataset} test_auc: {best_test_metric[0]:.2%}, test_ap: {best_test_metric[1]:.2%}')
 
 
 if __name__ == "__main__":
