@@ -2,38 +2,39 @@
 ![](imgs/cases.png)
 ![](imgs/cases2.png)
 
+# 🚀 Installation
 
+Please make sure you have installed [PyTorch](https://pytorch.org) and [PyTorch Geometric (PyG)](https://pytorch-geometric.readthedocs.io/en/latest/notes/installation.html).
+
+
+```bash
+# Coming soon
+pip install -U lrgae
+```
+
+or
+
+```bash
+# Recommended
+git clone https://github.com/EdisonLeeeee/lrGAE.git && cd lrGAE
+pip install -e . --verbose
+```
+
+where `-e` means "editable" mode so you don't have to reinstall every time you make changes.
 
 # Reproduction
-### Node classification
-+ Baselines
-```bash
-python node_classification/maskgae.py
-python node_classification/s2gae.py
-python node_classification/graphmae.py
-python node_classification/graphmae2.py
-python node_classification/augmae.py
-python node_classification/gigamae.py
-```
-+ lrGAE
-```bash
-python node_classification/structure_lrgae.py --left 2 --right 2
-python node_classification/feature_lrgae.py --left 2 --right 0
-```
++ [Node classification task][./node_classification]
++ [Link prediction task][./node_classification]
++ [Graph clustering task][./node_classification]
++ [Graph classification task][./node_classification]
 
-### Link prediction
-+ Baselines
-```bash
-python link_prediction/graphmae.py
-python link_prediction/graphmae2.py
-python link_prediction/augmae.py
-python link_prediction/maskgae.py --encoder_layers 1
-python link_prediction/s2gae.py
-python link_prediction/gigamae.py
-```
-+ lrGAE
-```bash
-python link_prediction/structure_lrgae.py --encoder_layers 1 --left 1 --right 1
-python link_prediction/feature_lrgae.py --left 2 --right 0
-```
-
+# 👀 Implementations
++ GAE
++ VGAE
++ MaskGAE
++ GraphMAE
++ GraphMAE2
++ AUG-MAE
++ GiGaMAE
++ S2GAE
++ 7 variants of lrGAE (our works)
