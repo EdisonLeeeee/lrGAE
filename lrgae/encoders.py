@@ -1,11 +1,12 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from lrgae.resolver import (activation_resolver, layer_resolver,
-                            normalization_resolver)
 from torch_geometric.nn import Node2Vec as n2v
 from torch_geometric.nn import Sequential
 from torch_sparse import SparseTensor
+
+from lrgae.resolver import (activation_resolver, layer_resolver,
+                            normalization_resolver)
 
 
 def to_sparse_tensor(edge_index, num_nodes):

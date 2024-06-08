@@ -3,7 +3,6 @@ import random
 
 import numpy as np
 import torch
-from texttable import Texttable
 
 
 def set_seed(seed: int):
@@ -12,13 +11,14 @@ def set_seed(seed: int):
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed) # if you are using multi-GPU.
+    torch.cuda.manual_seed_all(seed)  # if you are using multi-GPU.
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.enabled = False
 
-    
+
 def tab_printer(args):
+    from texttable import Texttable
     """Function to print the logs in a nice tabular format.
 
     Note
@@ -33,5 +33,6 @@ def tab_printer(args):
     args = vars(args)
     keys = sorted(args.keys())
     t = Texttable()
-    t.add_rows([["Parameter", "Value"]] + [[k, str(args[k])] for k in keys if not k.startswith('__')])
+    t.add_rows([["Parameter", "Value"]] + [[k, str(args[k])]
+               for k in keys if not k.startswith('__')])
     return t.draw()
