@@ -9,6 +9,7 @@ from torch_geometric.utils import index_to_mask
 def get_dataset(root: str, name: str, transform=None) -> Data:
     if transform is None:
         transform = lambda x: x
+        
     if name in {'arxiv', 'products', 'mag'}:
         from ogb.nodeproppred import PygNodePropPredDataset
         print('loading ogb dataset...')
@@ -47,6 +48,9 @@ def get_dataset(root: str, name: str, transform=None) -> Data:
         dataset = Coauthor(root, name)
         data = transform(dataset[0])
         data = T.RandomNodeSplit(num_val=0.1, num_test=0.8)(data)
+    elif name in ['NCI1', 'DD', 'PROTEINS', 'COLLAB', 
+                  'MUTAG', 'REDDIT-BINARY', 'REDDIT-MULTI-5K']:
+        data = TUDataset(root, name, transform)
     else:
         raise ValueError(name)
     return data

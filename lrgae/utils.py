@@ -24,7 +24,6 @@ def set_seed(seed: int):
 
 
 def tab_printer(args):
-    from texttable import Texttable
     """Function to print the logs in a nice tabular format.
 
     Note
@@ -36,6 +35,7 @@ def tab_printer(args):
     ----------
     args: Parameters used for the model.
     """
+    from texttable import Texttable
     args = vars(args)
     keys = sorted(args.keys())
     t = Texttable()
