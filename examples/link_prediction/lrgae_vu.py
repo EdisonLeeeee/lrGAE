@@ -1,4 +1,5 @@
 import argparse
+from tqdm.auto import tqdm
 
 import torch
 import torch.nn as nn
@@ -11,7 +12,7 @@ from lrgae.encoders import GNNEncoder
 from lrgae.masks import MaskEdge, MaskPath, NullMask
 from lrgae.models import lrGAE
 from lrgae.utils import set_seed
-from tqdm.auto import tqdm
+from lrgae.evaluators import LinkPredEvaluator
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--dataset", default="Cora",
@@ -93,6 +94,7 @@ transform = T.Compose([
     T.ToDevice(device),
 ])
 data = get_dataset(root, args.dataset, transform=transform)
+evaluator = LinkPredEvaluator(device=device)
 train_data, valid_data, test_data = T.RandomLinkSplit(num_val=0.05, num_test=0.1,
                                                       is_undirected=True,
                                                       split_labels=True,
@@ -150,9 +152,9 @@ for epoch in pbar:
 
     if epoch % args.eval_steps == 0:
         print(f'\nEvaluating on epoch {epoch}...')
-        val_results = model.eval_linkpred(valid_data)
+        val_results = evaluator.evaluate(model, valid_data)
         valid_auc, valid_ap = val_results['auc'], val_results['ap']
-        test_results = model.eval_linkpred(test_data)
+        test_results = evaluator.evaluate(model, test_data)
         test_auc, test_ap = test_results['auc'], test_results['ap']
         if best_valid_metric is None or best_valid_metric[0] < valid_auc:
             best_test_metric = test_auc, test_ap
@@ -162,4 +164,4 @@ for epoch in pbar:
         print(
             f'Link prediction test_auc: {test_auc:.2%}, test_ap: {test_ap:.2%}')
 print(
-    f'Link prediction test_auc on {args.dataset}: {best_test_metric[0]:.2%}, test_ap: {best_test_metric[1]:.2%}')
+    f'Link prediction on {args.dataset} test_auc: {best_test_metric[0]:.2%}, test_ap: {best_test_metric[1]:.2%}')

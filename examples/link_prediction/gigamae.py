@@ -1,17 +1,17 @@
 import argparse
+from tqdm.auto import tqdm
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import torch_geometric.transforms as T
+
 # custom modules
 from lrgae.dataset import get_dataset
-from lrgae.decoders import CrossCorrelationDecoder, EdgeDecoder, FeatureDecoder
+from lrgae.decoders import FeatureDecoder
 from lrgae.encoders import PCA, GNNEncoder, Node2Vec
-from lrgae.masks import MaskFeature, NullMask
 from lrgae.models import GiGaMAE
 from lrgae.utils import set_seed
-from tqdm.auto import tqdm
+from lrgae.evaluators import LinkPredEvaluator
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--dataset", default="Cora",
@@ -115,134 +115,129 @@ def dropout_edge(edge_index, edge_p):
     return edge_index.long(), mask
 
 
-def main():
+args = parser.parse_args()
 
-    args = parser.parse_args()
+set_seed(args.seed)
 
-    set_seed(args.seed)
+if args.device < 0:
+    device = "cpu"
+else:
+    device = f"cuda:{args.device}" if torch.cuda.is_available() else "cpu"
 
-    if args.device < 0:
-        device = "cpu"
-    else:
-        device = f"cuda:{args.device}" if torch.cuda.is_available() else "cpu"
+# (!IMPORTANT) Specify the path to your dataset directory ##############
+root = '~/public_data/pyg_data'  # my root directory
+# root = '../data/'
+########################################################################
+transform = T.Compose([
+    T.ToUndirected(),
+    T.ToDevice(device),
+    # T.NormalizeFeatures(),
+])
+data = get_dataset(root, args.dataset, transform=transform)
+evaluator = LinkPredEvaluator(device=device)
+train_data, valid_data, test_data = T.RandomLinkSplit(num_val=0.05, num_test=0.1,
+                                                      is_undirected=True,
+                                                      split_labels=True,
+                                                      add_negative_train_samples=False)(data)
 
-    # (!IMPORTANT) Specify the path to your dataset directory ##############
-    root = '~/public_data/pyg_data'  # my root directory
-    # root = '../data/'
-    ########################################################################
-    transform = T.Compose([
-        T.ToUndirected(),
-        T.ToDevice(device),
-        # T.NormalizeFeatures(),
-    ])
-    data = get_dataset(root, args.dataset, transform=transform)
-    train_data, valid_data, test_data = T.RandomLinkSplit(num_val=0.05, num_test=0.1,
-                                                          is_undirected=True,
-                                                          split_labels=True,
-                                                          add_negative_train_samples=False)(data)
+print("Node2Vec training...")
+node2vec = Node2Vec(data=train_data, embed_dim=args.embedding_dim,
+                    walk_length=args.walk_length,
+                    context_size=args.context_size,
+                    walks_per_node=args.walks_per_node,
+                    num_negative_samples=args.node2vec_neg_samples,
+                    p=args.random_walk_p, q=args.random_walk_q).to(device)
+node2vec.train()
+node2vec.fit(epochs=args.node2vec_epoch,
+             lr=args.node2vec_lr,
+             batch_size=args.node2vec_batchsize,
+             device=device)
+node2vec_embeds = node2vec.get_embedding()
 
-    print("Node2Vec training...")
-    node2vec = Node2Vec(data=train_data, embed_dim=args.embedding_dim,
-                        walk_length=args.walk_length,
-                        context_size=args.context_size,
-                        walks_per_node=args.walks_per_node,
-                        num_negative_samples=args.node2vec_neg_samples,
-                        p=args.random_walk_p, q=args.random_walk_q).to(device)
-    node2vec.train()
-    node2vec.fit(epochs=args.node2vec_epoch,
-                 lr=args.node2vec_lr,
-                 batch_size=args.node2vec_batchsize,
-                 device=device)
-    node2vec_embeds = node2vec.get_embedding()
+print("PCA training...")
+pca = PCA().to(device)
+pca_embeds = pca(train_data.x, args.ratio)
 
-    print("PCA training...")
-    pca = PCA().to(device)
-    pca_embeds = pca(train_data.x, args.ratio)
+encoder = GNNEncoder(in_channels=data.num_features,
+                     hidden_channels=args.encoder_channels,
+                     out_channels=args.hidden_channels,
+                     num_layers=args.encoder_layers,
+                     dropout=args.encoder_dropout,
+                     norm=args.encoder_norm,
+                     layer=args.layer,
+                     activation=args.encoder_activation)
+decoder = [FeatureDecoder(in_channels=args.hidden_channels,
+                          hidden_channels=args.hidden_channels * 2,
+                          out_channels=node2vec_embeds.size(1),
+                          num_layers=args.decoder_layers,
+                          dropout=args.decoder_dropout,
+                          ),
+           FeatureDecoder(in_channels=args.hidden_channels,
+                          hidden_channels=args.hidden_channels * 2,
+                          out_channels=pca_embeds.size(1),
+                          num_layers=args.decoder_layers,
+                          dropout=args.decoder_dropout,
+                          ),
+           FeatureDecoder(in_channels=args.hidden_channels,
+                          hidden_channels=args.hidden_channels * 2,
+                          out_channels=node2vec_embeds.size(
+                              1) + pca_embeds.size(1),
+                          num_layers=args.decoder_layers,
+                          dropout=args.decoder_dropout,
+                          )
+           ]
 
-    encoder = GNNEncoder(in_channels=data.num_features,
-                         hidden_channels=args.encoder_channels,
-                         out_channels=args.hidden_channels,
-                         num_layers=args.encoder_layers,
-                         dropout=args.encoder_dropout,
-                         norm=args.encoder_norm,
-                         layer=args.layer,
-                         activation=args.encoder_activation)
-    decoder = [FeatureDecoder(in_channels=args.hidden_channels,
-                              hidden_channels=args.hidden_channels * 2,
-                              out_channels=node2vec_embeds.size(1),
-                              num_layers=args.decoder_layers,
-                              dropout=args.decoder_dropout,
-                              ),
-               FeatureDecoder(in_channels=args.hidden_channels,
-                              hidden_channels=args.hidden_channels * 2,
-                              out_channels=pca_embeds.size(1),
-                              num_layers=args.decoder_layers,
-                              dropout=args.decoder_dropout,
-                              ),
-               FeatureDecoder(in_channels=args.hidden_channels,
-                              hidden_channels=args.hidden_channels * 2,
-                              out_channels=node2vec_embeds.size(
-                                  1) + pca_embeds.size(1),
-                              num_layers=args.decoder_layers,
-                              dropout=args.decoder_dropout,
-                              )
-               ]
+model = GiGaMAE(encoder=encoder, decoder=decoder).to(device)
 
-    model = GiGaMAE(encoder=encoder, decoder=decoder).to(device)
+optimizer = torch.optim.Adam(model.parameters(),
+                             lr=args.lr,
+                             weight_decay=args.weight_decay)
+pbar = tqdm(range(1, 1 + args.epochs))
+best_test_metric = None
+best_valid_metric = None
+for epoch in pbar:
 
-    optimizer = torch.optim.Adam(model.parameters(),
-                                 lr=args.lr,
-                                 weight_decay=args.weight_decay)
-    pbar = tqdm(range(1, 1 + args.epochs))
-    best_test_metric = None
-    best_valid_metric = None
-    for epoch in pbar:
+    model.train()
 
-        model.train()
+    optimizer.zero_grad()
 
-        optimizer.zero_grad()
+    mask_x, mask_index_node_binary = mask_feature(
+        train_data.x, args.node_p)
+    mask_edge, mask_index_edge = dropout_edge(
+        train_data.edge_index, args.edge_p)
 
-        mask_x, mask_index_node_binary = mask_feature(
-            train_data.x, args.node_p)
-        mask_edge, mask_index_edge = dropout_edge(
-            train_data.edge_index, args.edge_p)
+    mask_edge_node = mask_index_edge * train_data.edge_index[0]
+    mask_index_edge_binary = torch.zeros(train_data.x.shape[0]).to(device)
+    mask_index_edge_binary[mask_edge_node] = 1
+    mask_index_edge_binary = mask_index_edge_binary.to(bool)
+    mask_both_node_edge = mask_index_edge_binary & mask_index_node_binary
+    mask_index_node_binary_sole = mask_index_node_binary & (
+        ~mask_both_node_edge)
+    mask_index_edge_binary_sole = mask_index_edge_binary & (
+        ~mask_both_node_edge)
 
-        mask_edge_node = mask_index_edge * train_data.edge_index[0]
-        mask_index_edge_binary = torch.zeros(train_data.x.shape[0]).to(device)
-        mask_index_edge_binary[mask_edge_node] = 1
-        mask_index_edge_binary = mask_index_edge_binary.to(bool)
-        mask_both_node_edge = mask_index_edge_binary & mask_index_node_binary
-        mask_index_node_binary_sole = mask_index_node_binary & (
-            ~mask_both_node_edge)
-        mask_index_edge_binary_sole = mask_index_edge_binary & (
-            ~mask_both_node_edge)
+    loss = model.train_step(emb_node2vec=node2vec_embeds, emb_pca=pca_embeds,
+                            mask_x=mask_x, mask_edge=mask_edge, mask_index_node=mask_index_node_binary_sole,
+                            mask_index_edge=mask_index_edge_binary_sole, mask_both_node_edge=mask_both_node_edge)
+    loss.backward()
+    if args.grad_norm > 0:
+        # gradient clipping
+        nn.utils.clip_grad_norm_(model.parameters(), args.grad_norm)
+    optimizer.step()
+    pbar.set_description(f'Loss: {loss.item():.4f}')
 
-        loss = model.train_step(emb_node2vec=node2vec_embeds, emb_pca=pca_embeds,
-                                mask_x=mask_x, mask_edge=mask_edge, mask_index_node=mask_index_node_binary_sole,
-                                mask_index_edge=mask_index_edge_binary_sole, mask_both_node_edge=mask_both_node_edge)
-        loss.backward()
-        if args.grad_norm > 0:
-            # gradient clipping
-            nn.utils.clip_grad_norm_(model.parameters(), args.grad_norm)
-        optimizer.step()
-        pbar.set_description(f'Loss: {loss.item():.4f}')
-
-        if epoch % args.eval_steps == 0:
-            print(f'\nEvaluating on epoch {epoch}...')
-            val_results = model.eval_linkpred(valid_data)
-            valid_auc, valid_ap = val_results['auc'], val_results['ap']
-            test_results = model.eval_linkpred(test_data)
-            test_auc, test_ap = test_results['auc'], test_results['ap']
-            if best_valid_metric is None or best_valid_metric[0] < valid_auc:
-                best_test_metric = test_auc, test_ap
-                best_valid_metric = valid_auc, valid_ap
-            print(
-                f'Link prediction valid_auc: {valid_auc:.2%}, valid_ap: {valid_ap:.2%}')
-            print(
-                f'Link prediction test_auc: {test_auc:.2%}, test_ap: {test_ap:.2%}')
-    print(
-        f'Link prediction on {args.dataset} test_auc: {best_test_metric[0]:.2%}, test_ap: {best_test_metric[1]:.2%}')
-
-
-if __name__ == "__main__":
-    main()
+    if epoch % args.eval_steps == 0:
+        print(f'\nEvaluating on epoch {epoch}...')
+        val_results = evaluator.evaluate(model, valid_data)
+        valid_auc, valid_ap = val_results['auc'], val_results['ap']
+        test_results = evaluator.evaluate(model, test_data)
+        test_auc, test_ap = test_results['auc'], test_results['ap']
+        if best_valid_metric is None or best_valid_metric[0] < valid_auc:
+            best_test_metric = test_auc, test_ap
+            best_valid_metric = valid_auc, valid_ap
+        print(
+            f'Link prediction valid_auc: {valid_auc:.2%}, valid_ap: {valid_ap:.2%}')
+        print(
+            f'Link prediction test_auc: {test_auc:.2%}, test_ap: {test_ap:.2%}')
+print(
+    f'Link prediction on {args.dataset} test_auc: {best_test_metric[0]:.2%}, test_ap: {best_test_metric[1]:.2%}')
