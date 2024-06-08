@@ -10,7 +10,7 @@ from lrgae.decoders import CrossCorrelationDecoder, EdgeDecoder, FeatureDecoder
 from lrgae.encoders import GNNEncoder
 from lrgae.masks import MaskFeature, NullMask
 from lrgae.models import GraphMAE
-from lrgae.utils import set_seed, tab_printer
+from lrgae.utils import set_seed
 from tqdm.auto import tqdm
 
 parser = argparse.ArgumentParser()

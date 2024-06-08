@@ -10,7 +10,7 @@ from lrgae.decoders import CrossCorrelationDecoder, EdgeDecoder, FeatureDecoder
 from lrgae.encoders import GNNEncoder
 from lrgae.masks import MaskEdge, MaskPath, NullMask
 from lrgae.models import S2GAE
-from lrgae.utils import set_seed, tab_printer
+from lrgae.utils import set_seed
 from tqdm.auto import tqdm
 
 parser = argparse.ArgumentParser()
@@ -137,7 +137,8 @@ def main():
                 f'Link prediction valid_auc: {valid_auc:.2%}, valid_ap: {valid_ap:.2%}')
             print(
                 f'Link prediction test_auc: {test_auc:.2%}, test_ap: {test_ap:.2%}')
-    print(f'Link prediction on {args.dataset} test_auc: {best_test_metric[0]:.2%}, test_ap: {best_test_metric[1]:.2%}')
+    print(
+        f'Link prediction on {args.dataset} test_auc: {best_test_metric[0]:.2%}, test_ap: {best_test_metric[1]:.2%}')
 
 
 if __name__ == "__main__":

@@ -5,6 +5,12 @@ import numpy as np
 import torch
 
 
+def random_negative_sampler(num_nodes, num_neg_samples, device):
+    neg_edges = torch.randint(0, num_nodes,
+                              size=(2, num_neg_samples))
+    return neg_edges.to(device)
+
+
 def set_seed(seed: int):
     random.seed(seed)
     os.environ['PYTHONHASHSEED'] = str(seed)

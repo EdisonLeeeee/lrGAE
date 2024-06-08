@@ -5,67 +5,67 @@ cd examples/node_classification
 
 + lrGAE-5
 ```bash
-python structure_lrgae.py --dataset Cora --left 2 --right 2 --view AA
-python structure_lrgae.py --dataset Citeseer --left 2 --right 2 --view AA
-python structure_lrgae.py --dataset Pubmed --left 2 --right 2 --view AA
-python structure_lrgae.py --dataset Photo --left 2 --right 2 --view AA
-python structure_lrgae.py --dataset Computers --left 2 --right 2 --view AA
-python structure_lrgae.py --dataset CS --left 2 --right 2 --view AA
-python structure_lrgae.py --dataset Physics --left 2 --right 2 --view AA
+python lrgae_vu.py --dataset Cora --left 2 --right 2 --view AA
+python lrgae_vu.py --dataset Citeseer --left 2 --right 2 --view AA
+python lrgae_vu.py --dataset Pubmed --left 2 --right 2 --view AA
+python lrgae_vu.py --dataset Photo --left 2 --right 2 --view AA
+python lrgae_vu.py --dataset Computers --left 2 --right 2 --view AA
+python lrgae_vu.py --dataset CS --left 2 --right 2 --view AA
+python lrgae_vu.py --dataset Physics --left 2 --right 2 --view AA
 ```
 
 + lrGAE-6
 ```bash
-python structure_lrgae.py --dataset Cora --left 2 --right 1 --view AA
-python structure_lrgae.py --dataset Citeseer --left 2 --right 1 --view AA
-python structure_lrgae.py --dataset Pubmed --left 2 --right 1 --view AA
-python structure_lrgae.py --dataset Photo --left 2 --right 1 --view AA
-python structure_lrgae.py --dataset Computers --left 2 --right 1 --view AA
-python structure_lrgae.py --dataset CS --left 2 --right 1 --view AA
-python structure_lrgae.py --dataset Physics --left 2 --right 1 --view AA
+python lrgae_vu.py --dataset Cora --left 2 --right 1 --view AA
+python lrgae_vu.py --dataset Citeseer --left 2 --right 1 --view AA
+python lrgae_vu.py --dataset Pubmed --left 2 --right 1 --view AA
+python lrgae_vu.py --dataset Photo --left 2 --right 1 --view AA
+python lrgae_vu.py --dataset Computers --left 2 --right 1 --view AA
+python lrgae_vu.py --dataset CS --left 2 --right 1 --view AA
+python lrgae_vu.py --dataset Physics --left 2 --right 1 --view AA
 ```
 + lrGAE-7
 ```bash
-python structure_lrgae.py --dataset Cora --view AB
-python structure_lrgae.py --dataset Citeseer --view AB
-python structure_lrgae.py --dataset Pubmed --view AB
-python structure_lrgae.py --dataset Photo --view AB
-python structure_lrgae.py --dataset Computers --view AB
-python structure_lrgae.py --dataset CS --view AB
-python structure_lrgae.py --dataset Physics --view AB
+python lrgae_vu.py --dataset Cora --view AB
+python lrgae_vu.py --dataset Citeseer --view AB
+python lrgae_vu.py --dataset Pubmed --view AB
+python lrgae_vu.py --dataset Photo --view AB
+python lrgae_vu.py --dataset Computers --view AB
+python lrgae_vu.py --dataset CS --view AB
+python lrgae_vu.py --dataset Physics --view AB
 ```
 
 + lrGAE-8
 ```bash
-python structure_lrgae.py --dataset Cora --left 2 --right 1 --view AB
-python structure_lrgae.py --dataset Citeseer --left 2 --right 1 --view AB
-python structure_lrgae.py --dataset Pubmed --left 2 --right 1 --view AB
-python structure_lrgae.py --dataset Photo --left 2 --right 1 --view AB
-python structure_lrgae.py --dataset Computers --left 2 --right 1 --view AB
-python structure_lrgae.py --dataset CS --left 2 --right 1 --view AB
-python structure_lrgae.py --dataset Physics --left 2 --right 1 --view AB
+python lrgae_vu.py --dataset Cora --left 2 --right 1 --view AB
+python lrgae_vu.py --dataset Citeseer --left 2 --right 1 --view AB
+python lrgae_vu.py --dataset Pubmed --left 2 --right 1 --view AB
+python lrgae_vu.py --dataset Photo --left 2 --right 1 --view AB
+python lrgae_vu.py --dataset Computers --left 2 --right 1 --view AB
+python lrgae_vu.py --dataset CS --left 2 --right 1 --view AB
+python lrgae_vu.py --dataset Physics --left 2 --right 1 --view AB
 ```
 
 + GAE$_f$
 ```bash
-python feature_lrgae.py --dataset Cora --mask none --encoder_activation relu --encoder_dropout 0.5 --layer gcn
-python feature_lrgae.py --dataset Citeseer --mask none --encoder_activation relu --encoder_dropout 0.5 --layer gcn
-python feature_lrgae.py --dataset Pubmed --mask none --encoder_activation relu --encoder_dropout 0.5 --layer gcn
-python feature_lrgae.py --dataset Photo --mask none --encoder_activation relu --encoder_dropout 0.5 --layer gcn
-python feature_lrgae.py --dataset Computers --mask none --encoder_activation relu --encoder_dropout 0.5 --layer gcn
-python feature_lrgae.py --dataset CS --mask none --encoder_activation relu --encoder_dropout 0.5 --layer gcn
-python feature_lrgae.py --dataset Physics --mask none --encoder_activation relu --encoder_dropout 0.5 --layer gcn
+python lrgae_vv.py --dataset Cora --mask none --encoder_activation relu --encoder_dropout 0.5 --layer gcn
+python lrgae_vv.py --dataset Citeseer --mask none --encoder_activation relu --encoder_dropout 0.5 --layer gcn
+python lrgae_vv.py --dataset Pubmed --mask none --encoder_activation relu --encoder_dropout 0.5 --layer gcn
+python lrgae_vv.py --dataset Photo --mask none --encoder_activation relu --encoder_dropout 0.5 --layer gcn
+python lrgae_vv.py --dataset Computers --mask none --encoder_activation relu --encoder_dropout 0.5 --layer gcn
+python lrgae_vv.py --dataset CS --mask none --encoder_activation relu --encoder_dropout 0.5 --layer gcn
+python lrgae_vv.py --dataset Physics --mask none --encoder_activation relu --encoder_dropout 0.5 --layer gcn
 ```
 
 + GAE
 ```bash
-python structure_lrgae.py --dataset Cora --mask none --encoder_activation relu --encoder_dropout 0.5
-python structure_lrgae.py --dataset Citeseer --mask none --encoder_activation relu --encoder_dropout 0.5
-python structure_lrgae.py --dataset Pubmed --mask none --encoder_activation relu --encoder_dropout 0.5
-python structure_lrgae.py --dataset Photo --mask none --encoder_activation relu --encoder_dropout 0.5
-python structure_lrgae.py --dataset Computers --mask none --encoder_activation relu --encoder_dropout 0.5
-python structure_lrgae.py --dataset CS --mask none --encoder_activation relu --encoder_dropout 0.5
-python structure_lrgae.py --dataset Physics --mask none --encoder_activation relu --encoder_dropout 0.5
+python lrgae_vu.py --dataset Cora --mask none --encoder_activation relu --encoder_dropout 0.5
+python lrgae_vu.py --dataset Citeseer --mask none --encoder_activation relu --encoder_dropout 0.5
+python lrgae_vu.py --dataset Pubmed --mask none --encoder_activation relu --encoder_dropout 0.5
+python lrgae_vu.py --dataset Photo --mask none --encoder_activation relu --encoder_dropout 0.5
+python lrgae_vu.py --dataset Computers --mask none --encoder_activation relu --encoder_dropout 0.5
+python lrgae_vu.py --dataset CS --mask none --encoder_activation relu --encoder_dropout 0.5
+python lrgae_vu.py --dataset Physics --mask none --encoder_activation relu --encoder_dropout 0.5
 ```
 
 + S2GAE

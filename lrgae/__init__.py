@@ -1,2 +1,2 @@
-from . import (dataset, decoders, encoders, evaluators, loss, masks, resolver,
+from . import (dataset, decoders, encoders, evaluators, losses, masks, resolver,
                utils)
