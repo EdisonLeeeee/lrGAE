@@ -17,7 +17,7 @@ class S2GAE(nn.Module):
         self.encoder = encoder
         self.decoder = decoder
         self.mask = mask
-        self.loss_fn = FusedBCE()
+        self.loss_fn = FusedBCE(decoder)
 
     def reset_parameters(self):
         self.encoder.reset_parameters()

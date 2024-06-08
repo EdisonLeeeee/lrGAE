@@ -8,6 +8,7 @@ from lrgae.losses import semi_loss
 
 class GiGaMAE(nn.Module):
     def __init__(self, encoder, decoder):
+        super().__init__()
         self.encoder = encoder
         self.p1, self.p2, self.p3 = decoder[0], decoder[1], decoder[2]
 

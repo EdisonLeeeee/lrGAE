@@ -58,7 +58,7 @@ parser.add_argument("--start", default="node",
 parser.add_argument('--p', type=float, default=0.7,
                     help='Mask ratio or sample ratio for MaskEdge/MaskPath')
 
-parser.add_argument("--mode", default="last",
+parser.add_argument("--mode", default="cat",
                     help="Embedding mode `last` or `cat` (default: none)")
 parser.add_argument('--l2_normalize', action='store_true',
                     help='Whether to use l2 normalize output embedding. (default: False)')

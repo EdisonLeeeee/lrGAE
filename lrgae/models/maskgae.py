@@ -21,7 +21,7 @@ class MaskGAE(nn.Module):
         self.decoder = decoder
         self.degree_decoder = degree_decoder
         self.mask = mask
-        self.loss_fn = FusedBCE()
+        self.loss_fn = FusedBCE(decoder)
 
     def reset_parameters(self):
         self.encoder.reset_parameters()

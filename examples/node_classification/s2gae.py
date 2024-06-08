@@ -26,7 +26,7 @@ parser.add_argument("--encoder_activation", nargs="?", default="elu",
                     help="Activation function for GNN encoder, (default: elu)")
 parser.add_argument('--encoder_channels', type=int, default=256,
                     help='Channels of hidden representation. (default: 256)')
-parser.add_argument('--+1', type=int, default=2,
+parser.add_argument('--encoder_layers', type=int, default=2,
                     help='Number of layers for encoder. (default: 2)')
 parser.add_argument('--encoder_dropout', type=float, default=0.5,
                     help='Dropout probability of encoder. (default: 0.5)')
@@ -54,6 +54,8 @@ parser.add_argument('--p', type=float, default=0.7,
 parser.add_argument('--undirected', action='store_true',
                     help='Whether to perform undirected masking. (default: False)')
 
+parser.add_argument("--mode", default="last",
+                    help="Embedding mode `last` or `cat` (default: none)")
 parser.add_argument('--l2_normalize', action='store_true',
                     help='Whether to use l2 normalize output embedding. (default: False)')
 parser.add_argument('--nodeclas_lr', type=float, default=0.01,
@@ -68,14 +70,7 @@ parser.add_argument('--runs', type=int, default=1,
 parser.add_argument('--eval_steps', type=int, default=50, help='(default: 50)')
 parser.add_argument("--device", type=int, default=0)
 
-
-try:
-    args = parser.parse_args()
-    print(tab_printer(args))
-except:
-    parser.print_help()
-    exit(0)
-
+args = parser.parse_args()
 set_seed(args.seed)
 
 if args.device < 0:
@@ -105,7 +100,7 @@ mask = MaskEdge(p=args.p, undirected=args.undirected)
 encoder = GNNEncoder(in_channels=data.num_features,
                      hidden_channels=args.encoder_channels,
                      out_channels=args.encoder_channels,
-                     num_layers=args.+1,
+                     num_layers=args.encoder_layers,
                      dropout=args.encoder_dropout,
                      norm=args.encoder_norm,
                      layer=args.layer,
@@ -118,8 +113,6 @@ decoder = CrossCorrelationDecoder(in_channels=args.encoder_channels,
                                   norm=args.decoder_norm)
 
 model = S2GAE(encoder, decoder, mask).to(device)
-print(model)
-print(mask)
 
 best_metric = None
 optimizer = torch.optim.Adam(model.parameters(),
