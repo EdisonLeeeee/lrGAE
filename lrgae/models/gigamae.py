@@ -10,26 +10,35 @@ class GiGaMAE(nn.Module):
     def __init__(self, encoder, decoder):
         super().__init__()
         self.encoder = encoder
-        self.p1, self.p2, self.p3 = decoder[0], decoder[1], decoder[2]
+        if isinstance(decoder, (list, tuple)):
+            decoder = nn.ModuleList(decoder)
+        self.decoder = decoder
 
     def reset_parameters(self):
         self.encoder.reset_parameters()
-        self.p1.reset_parameters()
-        self.p2.reset_parameters()
-        self.p3.reset_parameters()
+        for module in self.decoder:
+            module.reset_parameters()
 
     def forward(self, x, edge_index, **kwargs):
         return self.encoder(x, edge_index, **kwargs)
 
-    def train_step(self, emb_node2vec, emb_pca,
-                   mask_x, mask_edge, mask_index_node, mask_index_edge, mask_both_node_edge,
+    def train_step(self,
+                   emb_node2vec,
+                   emb_pca,
+                   mask_x,
+                   mask_edge,
+                   mask_index_node,
+                   mask_index_edge,
+                   mask_both_node_edge,
                    tau=0.7,
                    l1_e=4, l2_e=2, l12_e=6,
                    l1_f=2, l2_f=5, l12_f=6,
                    l1_b=2, l2_b=3, l12_b=3,
                    ) -> torch.Tensor:
+
         z = self.encoder(mask_x, mask_edge)[-1]
-        recon_z1, recon_z2, recon_z3 = self.p1(z), self.p2(z), self.p3(z)
+        p1, p2, p3 = self.decoder
+        recon_z1, recon_z2, recon_z3 = p1(z), p2(z), p3(z)
 
         loss1_f = semi_loss(
             emb_node2vec[mask_index_node], recon_z1[mask_index_node], tau)

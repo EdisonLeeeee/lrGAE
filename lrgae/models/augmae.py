@@ -32,6 +32,10 @@ class AUGMAE(nn.Module):
         self.uniformity_layer.reset_parameters()
         self.enc_mask_token.data.zero_()
 
+
+    def forward(self, x, edge_index, **kwargs):
+        return self.encoder(x, edge_index, **kwargs)
+        
     def train_step(self, graph: Data, alpha_adv, mask_prob, lamda, belta) -> torch.Tensor:
         x, edge_index = graph.x, graph.edge_index
         device = x.device
