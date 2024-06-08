@@ -17,7 +17,7 @@ class NodeClasEvaluator:
                  lr: float = 0.01,
                  weight_decay: float = 0.,
                  batch_size: int = 512,
-                 mode: str = 'cat',
+                 mode: str = 'last',
                  l2_normalize: bool = False,
                  runs: int = 1,
                  epochs: int = 100,
@@ -33,11 +33,11 @@ class NodeClasEvaluator:
         self.device = device
 
     def evaluate(self, model, data):
+        model.eval()
 
         with torch.no_grad():
-            self.eval()
-            embedding = model.encode(data.x.to(self.device),
-                                     data.edge_index.to(self.device))[1:]
+            embedding = model(data.x.to(self.device),
+                              data.edge_index.to(self.device))[1:]
             if self.mode == 'cat':
                 embedding = torch.cat(embedding, dim=-1)
             else:
@@ -140,21 +140,21 @@ class LinkPredEvaluator:
                  right: Union[int, tuple, list] = -1):
 
         model.eval()
-        z = model.encode(data.x.to(self.device),
-                         data.edge_index.to(self.device))
+        z = model(data.x.to(self.device),
+                  data.edge_index.to(self.device))
 
         decoder = model.decoder
         if not isinstance(decoder, (EdgeDecoder, CrossCorrelationDecoder)):
             decoder = DotProductEdgeDecoder()
 
         if isinstance(left, (list, tuple)):
-            left = [z[l] for l in self.left]
+            left = [z[l] for l in left]
         else:
-            left = z[self.left]
+            left = z[left]
         if isinstance(right, (list, tuple)):
-            right = [z[r] for r in self.right]
+            right = [z[r] for r in right]
         else:
-            right = z[self.right]
+            right = z[right]
 
         pos_pred = self.batch_predict(decoder, left, right,
                                       data.pos_edge_label_index)

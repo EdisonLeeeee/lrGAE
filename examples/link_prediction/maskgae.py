@@ -87,8 +87,7 @@ transform = T.Compose([
 ])
 data = get_dataset(root, args.dataset, transform=transform)
 
-evaluator = LinkPredEvaluator(batch_size=args.batch_size,
-                              device=device)
+evaluator = LinkPredEvaluator(device=device)
 
 train_data, valid_data, test_data = T.RandomLinkSplit(num_val=0.05, num_test=0.1,
                                                       is_undirected=True,
