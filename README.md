@@ -1,5 +1,4 @@
 # lrGAE: graph autoencoders as contrastive learning architectures
-![](imgs/cases.png)
 ![](imgs/cases2.png)
 
 # 🚀 Installation
@@ -23,10 +22,10 @@ pip install -e . --verbose
 where `-e` means "editable" mode so you don't have to reinstall every time you make changes.
 
 # Reproduction
-+ [Node classification task][./node_classification]
-+ [Link prediction task][./node_classification]
-+ [Graph clustering task][./node_classification]
-+ [Graph classification task][./node_classification]
++ [Node classification task](./node_classification)
++ [Link prediction task](./node_classification)
++ [Graph clustering task](./node_classification)
++ [Graph classification task](./node_classification)
 
 # 👀 Implementations
 + GAE
@@ -38,3 +37,4 @@ where `-e` means "editable" mode so you don't have to reinstall every time you m
 + GiGaMAE
 + S2GAE
 + 7 variants of lrGAE (our works)
+![](imgs/cases.png)
