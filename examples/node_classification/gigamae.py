@@ -126,11 +126,7 @@ def dropout_edge(edge_index, edge_p):
     return edge_index.long(), mask
 
 
-try:
-    args = parser.parse_args()
-except:
-    parser.print_help()
-    exit(0)
+args = parser.parse_args()
 
 set_seed(args.seed)
 

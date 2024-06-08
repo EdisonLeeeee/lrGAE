@@ -75,11 +75,7 @@ parser.add_argument('--eval_steps', type=int, default=10, help='(default: 10)')
 parser.add_argument("--device", type=int, default=0)
 
 
-try:
-    args = parser.parse_args()
-except:
-    parser.print_help()
-    exit(0)
+args = parser.parse_args()
 
 set_seed(args.seed)
 
