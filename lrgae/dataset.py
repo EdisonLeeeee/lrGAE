@@ -1,14 +1,18 @@
 import os.path as osp
+import torch
 
 import torch_geometric.transforms as T
 from torch_geometric.data import Data
 from torch_geometric.datasets import Amazon, Coauthor, Planetoid, Reddit, TUDataset
-from torch_geometric.utils import index_to_mask
+from torch_geometric.utils import index_to_mask, degree
 
+class NullTransform(T.BaseTransform):
+    def forward(self, data):
+        return data
 
 def load_dataset(root: str, name: str, transform=None) -> Data:
     if transform is None:
-        def transform(x): return x
+        transform = NullTransform()
 
     if name in {'arxiv', 'products', 'mag'}:
         from ogb.nodeproppred import PygNodePropPredDataset
@@ -54,7 +58,20 @@ def load_dataset(root: str, name: str, transform=None) -> Data:
         data = T.RandomNodeSplit(num_val=0.1, num_test=0.8)(data)
     elif name in ['NCI1', 'DD', 'PROTEINS', 'COLLAB',
                   'MUTAG', 'REDDIT-BINARY', 'REDDIT-MULTI-5K']:
-        data = TUDataset(root, name, transform)
+        dataset = TUDataset(root, name, transform)
+        max_degree = 0.
+        for data in dataset:
+            max_degree = max(max_degree, degree(data.edge_index[0], 
+                                                dtype=torch.long).max().item())
+        trans = dataset.transform
+        onehot_degree = T.OneHotDegree(max_degree)
+        if isinstance(trans, T.Compose):
+            trans.transforms.append(onehot_degree)
+        elif isinstance(trans, T.BaseTransform):
+            dataset.transform = T.Compose([trans, onehot_degree])
+        else:
+            dataset.transform = onehot_degree
+        return dataset
     else:
         raise ValueError(name)
     return data
