@@ -48,24 +48,24 @@ python lrgae_vu.py --dataset Physics --left 2 --right 1 --view AB
 
 + GAE$_f$
 ```bash
-python lrgae_vv.py --dataset Cora --mask none --encoder_activation relu --encoder_dropout 0.5 --layer gcn
-python lrgae_vv.py --dataset Citeseer --mask none --encoder_activation relu --encoder_dropout 0.5 --layer gcn
-python lrgae_vv.py --dataset Pubmed --mask none --encoder_activation relu --encoder_dropout 0.5 --layer gcn
-python lrgae_vv.py --dataset Photo --mask none --encoder_activation relu --encoder_dropout 0.5 --layer gcn
-python lrgae_vv.py --dataset Computers --mask none --encoder_activation relu --encoder_dropout 0.5 --layer gcn
-python lrgae_vv.py --dataset CS --mask none --encoder_activation relu --encoder_dropout 0.5 --layer gcn
-python lrgae_vv.py --dataset Physics --mask none --encoder_activation relu --encoder_dropout 0.5 --layer gcn
+python gae_f.py --dataset Cora
+python gae_f.py --dataset Citeseer
+python gae_f.py --dataset Pubmed
+python gae_f.py --dataset Photo
+python gae_f.py --dataset Computers
+python gae_f.py --dataset CS
+python gae_f.py --dataset Physics
 ```
 
 + GAE
 ```bash
-python lrgae_vu.py --dataset Cora --mask none --encoder_activation relu --encoder_dropout 0.5
-python lrgae_vu.py --dataset Citeseer --mask none --encoder_activation relu --encoder_dropout 0.5
-python lrgae_vu.py --dataset Pubmed --mask none --encoder_activation relu --encoder_dropout 0.5
-python lrgae_vu.py --dataset Photo --mask none --encoder_activation relu --encoder_dropout 0.5
-python lrgae_vu.py --dataset Computers --mask none --encoder_activation relu --encoder_dropout 0.5
-python lrgae_vu.py --dataset CS --mask none --encoder_activation relu --encoder_dropout 0.5
-python lrgae_vu.py --dataset Physics --mask none --encoder_activation relu --encoder_dropout 0.5
+python gae.py --dataset Cora
+python gae.py --dataset Citeseer
+python gae.py --dataset Pubmed
+python gae.py --dataset Photo
+python gae.py --dataset Computers
+python gae.py --dataset CS
+python gae.py --dataset Physics
 ```
 
 + S2GAE

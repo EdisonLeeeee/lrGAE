@@ -46,31 +46,43 @@ python lrgae_vu.py --dataset Pubmed --mask none --encoder_activation relu --enco
 ```
 
 + S2GAE
+```bash
 python s2gae.py --dataset Cora
 python s2gae.py --dataset Citeseer
 python s2gae.py --dataset Pubmed
+```
 
 + MaskGAE
+```bash
 python maskgae.py --dataset Cora
 python maskgae.py --dataset Citeseer
 python maskgae.py --dataset Pubmed --encoder_dropout 0.2
+```
 
 + GraphMAE
+```bash
 python graphmae.py --dataset Cora
 python graphmae.py --dataset Citeseer
 python graphmae.py --dataset Pubmed
+```
 
 + GraphMAE2
+```bash
 python graphmae2.py --dataset Cora
 python graphmae2.py --dataset Citeseer
 python graphmae2.py --dataset Pubmed
+```
 
 + AUG-MAE
+```bash
 python augmae.py --dataset Cora
 python augmae.py --dataset Citeseer
 python augmae.py --dataset Pubmed
+```
 
 + GiGaMAE
+```bash
 python gigamae.py --dataset Cora
 python gigamae.py --dataset Citeseer
 python gigamae.py --dataset Pubmed
+```

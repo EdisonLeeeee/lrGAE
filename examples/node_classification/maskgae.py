@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch_geometric.transforms as T
 
 # custom modules
-from lrgae.dataset import get_dataset
+from lrgae.dataset import load_dataset
 from lrgae.decoders import EdgeDecoder, FeatureDecoder
 from lrgae.encoders import GNNEncoder
 from lrgae.masks import MaskEdge, MaskPath, NullMask
@@ -92,7 +92,7 @@ transform = T.Compose([
     T.ToUndirected(),
     T.ToDevice(device),
 ])
-data = get_dataset(root, args.dataset, transform=transform)
+data = load_dataset(root, args.dataset, transform=transform)
 
 evaluator = NodeClasEvaluator(lr=args.nodeclas_lr,
                               weight_decay=args.nodeclas_weight_decay,

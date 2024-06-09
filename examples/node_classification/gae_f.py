@@ -7,56 +7,39 @@ import torch_geometric.transforms as T
 
 # custom modules
 from lrgae.dataset import load_dataset
-from lrgae.decoders import CrossCorrelationDecoder, EdgeDecoder, FeatureDecoder
+from lrgae.decoders import FeatureDecoder
 from lrgae.encoders import GNNEncoder
-from lrgae.masks import MaskFeature, NullMask
-from lrgae.models import lrGAE
+from lrgae.models import GAE_f
 from lrgae.utils import set_seed
 from lrgae.evaluators import NodeClasEvaluator
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--dataset", default="Cora",
                     help="Datasets. (default: Cora)")
-parser.add_argument("--mask", default="node",
-                    help="Masking stractegy, `node`, or `none` (default: node)")
-parser.add_argument("--view", default="AB",
-                    help="Contrastive graph views, `AA`, `AB` or `BB` (default: AA)")
 parser.add_argument('--seed', type=int, default=2024,
                     help='Random seed for model and dataset. (default: 2024)')
 
-parser.add_argument("--layer", default="gat", help="GNN layer, (default: gat)")
-parser.add_argument("--encoder_activation", default="prelu",
-                    help="Activation function for GNN encoder, (default: prelu)")
-parser.add_argument('--encoder_channels', type=int, default=128,
-                    help='Channels of hidden representation. (default: 128)')
+parser.add_argument("--layer", default="gcn",
+                    help="GNN layer, (default: gcn)")
+parser.add_argument("--encoder_activation", default="relu",
+                    help="Activation function for GNN encoder, (default: relu)")
+parser.add_argument('--encoder_channels', type=int, default=64,
+                    help='Channels of hidden representation. (default: 64)')
 parser.add_argument('--encoder_layers', type=int, default=2,
                     help='Number of layers for encoder. (default: 2)')
-parser.add_argument('--encoder_dropout', type=float, default=0.2,
-                    help='Dropout probability of encoder. (default: 0.8)')
-parser.add_argument("--encoder_norm", default="none",
-                    help="Normalization (default: none)")
-parser.add_argument("--num_heads", type=int, default=4,
-                    help="Number of attention heads for GAT encoders (default: 4)")
+parser.add_argument('--encoder_dropout', type=float, default=0.5,
+                    help='Dropout probability of encoder. (default: 0.5)')
+parser.add_argument("--encoder_norm",
+                    default="none", help="Normalization (default: none)")
 
 parser.add_argument('--decoder_channels', type=int, default=32,
                     help='Channels of decoder layers. (default: 32)')
-parser.add_argument("--decoder_activation", default="prelu",
-                    help="Activation function for GNN encoder, (default: prelu)")
-parser.add_argument('--decoder_layers', type=int, default=1,
-                    help='Number of layers for decoders. (default: 1)')
+parser.add_argument('--decoder_layers', type=int, default=2,
+                    help='Number of layers for decoders. (default: 2)')
 parser.add_argument('--decoder_dropout', type=float, default=0.2,
                     help='Dropout probability of decoder. (default: 0.2)')
-parser.add_argument("--decoder_norm", default="none",
-                    help="Normalization (default: none)")
-
-parser.add_argument('--left', type=int, default=2,
-                    help='Left layer. (default: 2)')
-parser.add_argument('--right', type=int, default=2,
-                    help='Right layer. (default: 2)')
-parser.add_argument('--p', type=float, default=0.7,
-                    help='Mask ratio or sample ratio for MaskNode')
-parser.add_argument("--loss", default="sce",
-                    help="Loss function, (default: sce)")
+parser.add_argument("--decoder_norm",
+                    default="none", help="Normalization (default: none)")
 
 parser.add_argument('--lr', type=float, default=0.0001,
                     help='Learning rate for training. (default: 0.0001)')
@@ -98,7 +81,6 @@ root = '~/public_data/pyg_data'  # my root directory
 transform = T.Compose([
     T.ToUndirected(),
     T.ToDevice(device),
-    # T.NormalizeFeatures(),
 ])
 data = load_dataset(root, args.dataset, transform=transform)
 
@@ -108,12 +90,6 @@ evaluator = NodeClasEvaluator(lr=args.nodeclas_lr,
                               l2_normalize=args.l2_normalize,
                               epochs=args.epochs,
                               device=device)
-assert args.mask in ['node', 'none']
-if args.mask == 'node':
-    mask = MaskFeature(p=args.p)
-else:
-    mask = NullMask()  # vanilla GAE
-
 encoder = GNNEncoder(in_channels=data.num_features,
                      hidden_channels=args.encoder_channels,
                      out_channels=args.encoder_channels,
@@ -121,32 +97,20 @@ encoder = GNNEncoder(in_channels=data.num_features,
                      dropout=args.encoder_dropout,
                      norm=args.encoder_norm,
                      layer=args.layer,
-                     num_heads=args.num_heads,
                      activation=args.encoder_activation)
 
-decoder = GNNEncoder(in_channels=args.encoder_channels,
-                     hidden_channels=args.decoder_channels,
-                     out_channels=data.num_features,
-                     num_layers=args.decoder_layers,
-                     dropout=args.decoder_dropout,
-                     norm=args.decoder_norm,
-                     layer=args.layer,
-                     activation=args.decoder_activation,
-                     add_last_act=False,
-                     add_last_bn=False)
+decoder = FeatureDecoder(in_channels=args.encoder_channels,
+                         hidden_channels=args.decoder_channels,
+                         num_layers=args.decoder_layers,
+                         dropout=args.decoder_dropout,
+                         norm=args.decoder_norm)
 
-model = lrGAE(encoder, decoder, mask,
-              loss=args.loss,
-              left=args.left,
-              right=args.right,
-              view=args.view,
-              pair='vv').to(device)
+model = GAE_f(encoder, decoder).to(device)
 
 best_metric = None
 optimizer = torch.optim.Adam(model.parameters(),
                              lr=args.lr,
                              weight_decay=args.weight_decay)
-
 pbar = tqdm(range(1, 1 + args.epochs))
 for epoch in pbar:
 

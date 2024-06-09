@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch_geometric.transforms as T
 
 # custom modules
-from lrgae.dataset import get_dataset
+from lrgae.dataset import load_dataset
 from lrgae.decoders import CrossCorrelationDecoder, EdgeDecoder, FeatureDecoder
 from lrgae.encoders import GNNEncoder
 from lrgae.masks import MaskFeature, NullMask
@@ -60,7 +60,7 @@ parser.add_argument("--loss", default="mse",
                     help="Loss function, (default: mse)")
 
 parser.add_argument('--lr', type=float, default=0.0001,
-                    help='Learning rate for training. (default: 0.01)')
+                    help='Learning rate for training. (default: 0.0001)')
 parser.add_argument('--weight_decay', type=float, default=5e-5,
                     help='weight_decay for link prediction training. (default: 5e-5)')
 parser.add_argument('--grad_norm', type=float, default=1.0,
@@ -90,7 +90,7 @@ transform = T.Compose([
     T.ToDevice(device),
     # T.NormalizeFeatures(),
 ])
-data = get_dataset(root, args.dataset, transform=transform)
+data = load_dataset(root, args.dataset, transform=transform)
 evaluator = LinkPredEvaluator(device=device)
 train_data, valid_data, test_data = T.RandomLinkSplit(num_val=0.05, num_test=0.1,
                                                       is_undirected=True,
