@@ -1,2 +1,9 @@
-from . import (dataset, decoders, encoders, evaluators, losses, masks, resolver,
-               utils)
+from . import dataset
+from . import decoders
+from . import encoders
+from . import evaluators
+from . import losses
+from . import masks
+from . import resolver
+from . import utils
+from . import kmeans

@@ -1,8 +1,8 @@
 from functools import partial
+from tqdm.auto import tqdm
 
 import numpy as np
 import torch
-from tqdm.auto import tqdm
 
 
 def initialize(X, num_clusters, seed):
@@ -49,11 +49,8 @@ def kmeans(
     :param gamma_for_soft_dtw: approaches to (hard) DTW as gamma -> 0
     :return: (torch.tensor, torch.tensor) cluster ids, cluster centers
     """
-    if tqdm_flag:
-        print(f'running k-means on {device}..')
-
     if distance == 'euclidean':
-        pairwise_distance_function = partial(pairwise_distance, batch_size=batch_size, device=device, tqdm_flag=tqdm_flag)
+        pairwise_distance_function = partial(pairwise_distance, batch_size=batch_size, device=device)
     else:
         raise NotImplementedError
 
@@ -65,8 +62,6 @@ def kmeans(
     if type(cluster_centers) == list:
         initial_state = initialize(X, num_clusters, seed=seed)
     else:
-        if tqdm_flag:
-            print('resuming')
         # find data point closest to the initial cluster center
         initial_state = cluster_centers
         dis = pairwise_distance_function(X, initial_state)
@@ -75,8 +70,7 @@ def kmeans(
         initial_state = initial_state.to(device)
 
     iteration = 0
-    if tqdm_flag:
-        tqdm_meter = tqdm(desc='[running kmeans]')
+    tqdm_meter = tqdm(desc='[Running K-means]', disable=not tqdm_flag)
     while True:
         choice_cluster = pairwise_distance_function(X, initial_state)
 
@@ -126,7 +120,6 @@ def kmeans_predict(
         distance='euclidean',
         device=torch.device('cpu'),
         gamma_for_soft_dtw=0.001,
-        tqdm_flag=True
 ):
     """
     predict using cluster centers
@@ -137,11 +130,9 @@ def kmeans_predict(
     :param gamma_for_soft_dtw: approaches to (hard) DTW as gamma -> 0
     :return: (torch.tensor) cluster ids
     """
-    if tqdm_flag:
-        print(f'predicting on {device}..')
 
     if distance == 'euclidean':
-        pairwise_distance_function = partial(pairwise_distance, batch_size=batch_size, device=device, tqdm_flag=tqdm_flag)
+        pairwise_distance_function = partial(pairwise_distance, batch_size=batch_size, device=device)
     else:
         raise NotImplementedError
 
@@ -156,10 +147,7 @@ def kmeans_predict(
     return choice_cluster.cpu()
 
 
-def pairwise_distance(data1, data2, batch_size=100000, device=torch.device('cpu'), tqdm_flag=True):
-    if tqdm_flag:
-        print(f'device is :{device}')
-
+def pairwise_distance(data1, data2, batch_size=100000, device=torch.device('cpu')):
     # transfer to device
     data1, data2 = data1.to(device), data2.to(device)
 
@@ -177,7 +165,7 @@ def pairwise_distance(data1, data2, batch_size=100000, device=torch.device('cpu'
     else:
         # mini-batch kmeans
         choice_cluster = torch.zeros(data1.shape[0])
-        for batch_idx in tqdm(range(int(np.ceil(data1.shape[0] / batch_size)))):
+        for batch_idx in range(int(np.ceil(data1.shape[0] / batch_size))):
             dis = (A[batch_idx * batch_size: (batch_idx + 1) * batch_size] - B) ** 2.0
             dis = dis.sum(dim=-1).squeeze()
             choice_ = torch.argmin(dis, dim=1)
