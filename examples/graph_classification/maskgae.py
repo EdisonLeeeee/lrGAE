@@ -35,8 +35,8 @@ parser.add_argument('--encoder_dropout', type=float, default=0.8,
                     help='Dropout probability of encoder. (default: 0.8)')
 parser.add_argument("--encoder_norm",
                     default="none", help="Normalization (default: none)")
-parser.add_argument("--pooling", default="mean",
-                    help="pooling layer, (default: mean)")
+parser.add_argument("--pooling", default="sum",
+                    help="Pooling layer, (default: sum)")
 
 parser.add_argument('--decoder_channels', type=int, default=32,
                     help='Channels of decoder layers. (default: 32)')
@@ -49,8 +49,10 @@ parser.add_argument("--decoder_norm",
 
 parser.add_argument('--lr', type=float, default=0.01,
                     help='Learning rate for training. (default: 0.01)')
-parser.add_argument('--weight_decay', type=float, default=5e-5,
-                    help='weight_decay for link prediction training. (default: 5e-5)')
+parser.add_argument('--batch_size', type=int, default=128,
+                    help='Learning batch size. (default: 128)')
+parser.add_argument('--weight_decay', type=float, default=0,
+                    help='weight_decay for link prediction training. (default: 0.)')
 parser.add_argument('--grad_norm', type=float, default=1.0,
                     help='grad_norm for training. (default: 1.0.)')
 
@@ -58,7 +60,7 @@ parser.add_argument('--alpha', type=float, default=0.001,
                     help='loss weight for degree prediction. (default: 0.001)')
 parser.add_argument("--start", default="node",
                     help="Which Type to sample starting nodes for random walks, (default: node)")
-parser.add_argument('--p', type=float, default=0.7,
+parser.add_argument('--p', type=float, default=0.5,
                     help='Mask ratio or sample ratio for MaskEdge/MaskPath')
 
 parser.add_argument("--mode", default="cat",
@@ -70,11 +72,11 @@ parser.add_argument('--nodeclas_lr', type=float, default=0.01,
 parser.add_argument('--nodeclas_weight_decay', type=float, default=5e-5,
                     help='weight_decay for node classification training. (default: 1e-3)')
 
-parser.add_argument('--epochs', type=int, default=500,
-                    help='Number of training epochs. (default: 500)')
+parser.add_argument('--epochs', type=int, default=100,
+                    help='Number of training epochs. (default: 100)')
 parser.add_argument('--runs', type=int, default=10,
-                    help='Number of runs. (default: 10)')
-parser.add_argument('--eval_steps', type=int, default=10, help='(default: 10)')
+                    help='Number of runs or folds. (default: 10)')
+parser.add_argument('--eval_steps', type=int, default=5, help='(default: 5)')
 parser.add_argument("--device", type=int, default=0)
 
 
@@ -87,7 +89,6 @@ if args.device < 0:
 else:
     device = f"cuda:{args.device}" if torch.cuda.is_available() else "cpu"
 
-print(device)
 # (!IMPORTANT) Specify the path to your dataset directory ##############
 root = '~/public_data/pyg_data'  # my root directory
 # root = '../data/'
@@ -145,7 +146,7 @@ best_metric = None
 optimizer = torch.optim.Adam(model.parameters(),
                              lr=args.lr,
                              weight_decay=args.weight_decay)
-loader = DataLoader(dataset, batch_size=128, shuffle=False)
+loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
 
 pbar = tqdm(range(1, 1 + args.epochs))
 

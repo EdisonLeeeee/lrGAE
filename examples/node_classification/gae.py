@@ -88,7 +88,6 @@ evaluator = NodeClasEvaluator(lr=args.nodeclas_lr,
                               weight_decay=args.nodeclas_weight_decay,
                               mode=args.mode,
                               l2_normalize=args.l2_normalize,
-                              epochs=args.epochs,
                               device=device)
 encoder = GNNEncoder(in_channels=data.num_features,
                      hidden_channels=args.encoder_channels,
