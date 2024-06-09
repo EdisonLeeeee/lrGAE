@@ -4,6 +4,7 @@ from tqdm.auto import tqdm
 import torch
 import torch.nn as nn
 import torch_geometric.transforms as T
+from torch_geometric.loader import DataLoader
 
 # custom modules
 from lrgae.dataset import load_dataset
@@ -12,12 +13,12 @@ from lrgae.encoders import GNNEncoder
 from lrgae.masks import MaskEdge, MaskPath, NullMask
 from lrgae.models import MaskGAE
 from lrgae.utils import set_seed
-from lrgae.evaluators import NodeClasEvaluator
+from lrgae.evaluators import GraphClasEvaluator
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--dataset", default="Cora",
+parser.add_argument("--dataset", default="MUTAG",
                     help="Datasets. (default: Cora)")
-parser.add_argument("--mask", default="path",
+parser.add_argument("--mask", default="edge",
                     help="Masking stractegy, `path`, `edge` or `None` (default: path)")
 parser.add_argument('--seed', type=int, default=2024,
                     help='Random seed for model and dataset. (default: 2024)')
@@ -34,6 +35,8 @@ parser.add_argument('--encoder_dropout', type=float, default=0.8,
                     help='Dropout probability of encoder. (default: 0.8)')
 parser.add_argument("--encoder_norm",
                     default="none", help="Normalization (default: none)")
+parser.add_argument("--pooling", default="mean",
+                    help="pooling layer, (default: mean)")
 
 parser.add_argument('--decoder_channels', type=int, default=32,
                     help='Channels of decoder layers. (default: 32)')
@@ -69,9 +72,9 @@ parser.add_argument('--nodeclas_weight_decay', type=float, default=5e-5,
 
 parser.add_argument('--epochs', type=int, default=500,
                     help='Number of training epochs. (default: 500)')
-parser.add_argument('--runs', type=int, default=1,
-                    help='Number of runs. (default: 1)')
-parser.add_argument('--eval_steps', type=int, default=50, help='(default: 50)')
+parser.add_argument('--runs', type=int, default=10,
+                    help='Number of runs. (default: 10)')
+parser.add_argument('--eval_steps', type=int, default=10, help='(default: 10)')
 parser.add_argument("--device", type=int, default=0)
 
 
@@ -84,6 +87,7 @@ if args.device < 0:
 else:
     device = f"cuda:{args.device}" if torch.cuda.is_available() else "cpu"
 
+print(device)
 # (!IMPORTANT) Specify the path to your dataset directory ##############
 root = '~/public_data/pyg_data'  # my root directory
 # root = '../data/'
@@ -92,18 +96,21 @@ transform = T.Compose([
     T.ToUndirected(),
     T.ToDevice(device),
 ])
-data = load_dataset(root, args.dataset, transform=transform)
+dataset = load_dataset(root, args.dataset, transform=transform)
 
-evaluator = NodeClasEvaluator(lr=args.nodeclas_lr,
-                              weight_decay=args.nodeclas_weight_decay,
-                              mode=args.mode,
-                              l2_normalize=args.l2_normalize,
-                              device=device)
+evaluator = GraphClasEvaluator(
+    pooling=args.pooling,
+    lr=args.nodeclas_lr,
+    weight_decay=args.nodeclas_weight_decay,
+    mode=args.mode,
+    l2_normalize=args.l2_normalize,
+    epochs=args.epochs,
+    device=device)
 
 assert args.mask in ['path', 'edge', 'none']
 if args.mask == 'path':
     mask = MaskPath(p=args.p,
-                    num_nodes=data.num_nodes,
+                    num_nodes=None,
                     start=args.start,
                     walk_length=args.encoder_layers + 1)
 elif args.mask == 'edge':
@@ -111,7 +118,7 @@ elif args.mask == 'edge':
 else:
     mask = NullMask()  # vanilla GAE
 
-encoder = GNNEncoder(in_channels=data.num_features,
+encoder = GNNEncoder(in_channels=dataset.num_features,
                      hidden_channels=args.encoder_channels,
                      out_channels=args.encoder_channels,
                      num_layers=args.encoder_layers,
@@ -138,22 +145,27 @@ best_metric = None
 optimizer = torch.optim.Adam(model.parameters(),
                              lr=args.lr,
                              weight_decay=args.weight_decay)
+loader = DataLoader(dataset, batch_size=128, shuffle=False)
+
 pbar = tqdm(range(1, 1 + args.epochs))
 
 for epoch in pbar:
-
-    optimizer.zero_grad()
     model.train()
-    loss = model.train_step(data, alpha=args.alpha)
-    loss.backward()
-    if args.grad_norm > 0:
-        nn.utils.clip_grad_norm_(model.parameters(), args.grad_norm)
-    optimizer.step()
-    pbar.set_description(f'Loss: {loss.item():.4f}')
+    loss_total = 0.
+    for data in loader:
+        optimizer.zero_grad()
+        data = data.to(device)
+        loss = model.train_step(data, alpha=args.alpha)
+        loss.backward()
+        if args.grad_norm > 0:
+            nn.utils.clip_grad_norm_(model.parameters(), args.grad_norm)
+        optimizer.step()
+        loss_total += loss.item()
+    pbar.set_description(f'Loss: {loss_total:.4f}')
 
     if epoch % args.eval_steps == 0:
         print(f'\nEvaluating on epoch {epoch}...')
-        results = evaluator.evaluate(model, data)
+        results = evaluator.evaluate(model, loader)
 
         if best_metric is None:
             best_metric = results
