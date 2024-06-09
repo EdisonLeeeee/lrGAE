@@ -3,13 +3,19 @@ from typing import Union
 import numpy as np
 import torch
 import torch.nn.functional as F
-from sklearn.metrics import average_precision_score, roc_auc_score
 from torch import Tensor, nn
 from torch.utils.data import DataLoader, TensorDataset
 
+from sklearn.metrics import (average_precision_score, 
+                             roc_auc_score,
+                             normalized_mutual_info_score,
+                             adjusted_rand_score)
+
 # custom modules
-from lrgae.decoders import (CrossCorrelationDecoder, DotProductEdgeDecoder,
+from lrgae.decoders import (CrossCorrelationDecoder, 
+                            DotProductEdgeDecoder,
                             EdgeDecoder)
+from lrgae.kmeans import kmeans
 
 
 class NodeClasEvaluator:
@@ -101,7 +107,7 @@ class NodeClasEvaluator:
                                          weight_decay=self.weight_decay)
 
             best_val_metric = test_metric = 0
-            for epoch in range(1, self.epochs + 1):
+            for _ in range(1, self.epochs + 1):
                 classifier.train()
                 for x, y in train_loader:
                     optimizer.zero_grad()
@@ -171,6 +177,47 @@ class LinkPredEvaluator:
                 'ap': average_precision_score(y, pred)}
 
 
+
+class GraphClusterEvaluator:
+    def __init__(self,
+                 mode: str = 'last',
+                 l2_normalize: bool = False,
+                 runs: int = 1,
+                 device: str = 'cpu',
+                 ):
+        self.mode = mode
+        self.l2_normalize = l2_normalize
+        self.runs = runs
+        self.device = device
+
+    def evaluate(self, model, data):
+        model.eval()
+
+        with torch.no_grad():
+            embedding = model(data.x.to(self.device),
+                              data.edge_index.to(self.device))[1:]
+            if self.mode == 'cat':
+                embedding = torch.cat(embedding, dim=-1)
+            else:
+                embedding = embedding[-1]
+
+            if self.l2_normalize:
+                embedding = F.normalize(embedding, p=2, dim=1)
+
+        y = data.y.squeeze()
+
+        num_clusters = y.max().item() + 1
+        nmis = []
+        aris = []
+        for _ in range(self.runs):
+            clusters, _ = kmeans(embedding, num_clusters)
+            nmi = normalized_mutual_info_score(y.cpu(), clusters.cpu())
+            ari = adjusted_rand_score(y.cpu(), clusters.cpu())     
+            nmis.append(nmi)
+            aris.append(ari)
+
+        return {'NMI': np.mean(nmis), 'ARI': np.mean(aris)}
+        
 # def linear_probing_cv(x, y, test_ratio=0.1):
 #     from sklearn.linear_model import LogisticRegression
 #     from sklearn.metrics import accuracy_score, f1_score
