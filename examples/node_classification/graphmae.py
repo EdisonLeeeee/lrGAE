@@ -95,7 +95,6 @@ evaluator = NodeClasEvaluator(lr=args.nodeclas_lr,
                               weight_decay=args.nodeclas_weight_decay,
                               mode=args.mode,
                               l2_normalize=args.l2_normalize,
-                              runs=args.runs,
                               epochs=args.epochs,
                               device=device)
 
@@ -138,7 +137,6 @@ for epoch in pbar:
     loss = model.train_step(data)
     loss.backward()
     if args.grad_norm > 0:
-        # gradient clipping
         nn.utils.clip_grad_norm_(model.parameters(), args.grad_norm)
     optimizer.step()
     pbar.set_description(f'Loss: {loss.item():.4f}')

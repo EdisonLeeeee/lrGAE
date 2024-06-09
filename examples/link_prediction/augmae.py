@@ -69,7 +69,7 @@ parser.add_argument('--grad_norm', type=float, default=1.0,
                     help='grad_norm for training. (default: 1.0.)')
 
 parser.add_argument('--epochs', type=int, default=1500,
-                    help='Number of training epochs. (default: 500)')
+                    help='Number of training epochs. (default: 1500)')
 parser.add_argument('--eval_steps', type=int, default=50, help='(default: 50)')
 parser.add_argument("--device", type=int, default=0)
 
@@ -161,7 +161,6 @@ for epoch in pbar:
     optimizer_mask.zero_grad()
     loss_mask.backward()
     if args.grad_norm > 0:
-        # gradient clipping
         nn.utils.clip_grad_norm_(advers_mask.parameters(), args.grad_norm)
     optimizer_mask.step()
 
@@ -177,7 +176,6 @@ for epoch in pbar:
     optimizer.zero_grad()
     loss.backward()
     if args.grad_norm > 0:
-        # gradient clipping
         nn.utils.clip_grad_norm_(model.parameters(), args.grad_norm)
     optimizer.step()
 

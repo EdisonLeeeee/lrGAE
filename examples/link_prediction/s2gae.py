@@ -115,16 +115,18 @@ for epoch in pbar:
     loss = model.train_step(train_data)
     loss.backward()
     if args.grad_norm > 0:
-        # gradient clipping
         nn.utils.clip_grad_norm_(model.parameters(), args.grad_norm)
     optimizer.step()
     pbar.set_description(f'Loss: {loss.item():.4f}')
 
     if epoch % args.eval_steps == 0:
         print(f'\nEvaluating on epoch {epoch}...')
-        val_results = evaluator.evaluate(model, valid_data)
+        left = right = list(range(args.encoder_layers))
+        val_results = evaluator.evaluate(model, valid_data,
+                                         left=left, right=right)
         valid_auc, valid_ap = val_results['auc'], val_results['ap']
-        test_results = evaluator.evaluate(model, test_data)
+        test_results = evaluator.evaluate(model, test_data,
+                                          left=left, right=right)
         test_auc, test_ap = test_results['auc'], test_results['ap']
         if best_valid_metric is None or best_valid_metric[0] < valid_auc:
             best_test_metric = test_auc, test_ap

@@ -7,7 +7,7 @@ import torch_geometric.transforms as T
 
 # custom modules
 from lrgae.dataset import get_dataset
-from lrgae.decoders import CrossCorrelationDecoder, EdgeDecoder, FeatureDecoder
+from lrgae.decoders import CrossCorrelationDecoder, EdgeDecoder
 from lrgae.encoders import GNNEncoder
 from lrgae.masks import MaskEdge, MaskPath, NullMask
 from lrgae.models import lrGAE
@@ -103,7 +103,6 @@ evaluator = NodeClasEvaluator(lr=args.nodeclas_lr,
                               weight_decay=args.nodeclas_weight_decay,
                               mode=args.mode,
                               l2_normalize=args.l2_normalize,
-                              runs=args.runs,
                               epochs=args.epochs,
                               device=device)
 assert args.mask in ['path', 'edge', 'none']
@@ -150,7 +149,6 @@ for epoch in pbar:
     loss = model.train_step(data)
     loss.backward()
     if args.grad_norm > 0:
-        # gradient clipping
         nn.utils.clip_grad_norm_(model.parameters(), args.grad_norm)
     optimizer.step()
     pbar.set_description(f'Loss: {loss.item():.4f}')

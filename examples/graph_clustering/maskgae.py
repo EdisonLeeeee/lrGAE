@@ -52,14 +52,14 @@ parser.add_argument('--grad_norm', type=float, default=1.0,
                     help='grad_norm for training. (default: 1.0.)')
 
 parser.add_argument('--alpha', type=float, default=0.001,
-                    help='loss weight for degree prediction. (default: 0.)')
+                    help='loss weight for degree prediction. (default: 0.001)')
 parser.add_argument("--start", default="node",
                     help="Which Type to sample starting nodes for random walks, (default: node)")
 parser.add_argument('--p', type=float, default=0.7,
                     help='Mask ratio or sample ratio for MaskEdge/MaskPath')
 
 parser.add_argument("--mode", default="cat",
-                    help="Embedding mode `last` or `cat` (default: none)")
+                    help="Embedding mode `last` or `cat` (default: cat)")
 parser.add_argument('--l2_normalize', action='store_true',
                     help='Whether to use l2 normalize output embedding. (default: False)')
 
@@ -91,9 +91,9 @@ transform = T.Compose([
 data = get_dataset(root, args.dataset, transform=transform)
 
 evaluator = GraphClusterEvaluator(mode=args.mode,
-                              l2_normalize=args.l2_normalize,
-                              runs=args.runs,
-                              device=device)
+                                  l2_normalize=args.l2_normalize,
+                                  runs=args.runs,
+                                  device=device)
 
 assert args.mask in ['path', 'edge', 'none']
 if args.mask == 'path':

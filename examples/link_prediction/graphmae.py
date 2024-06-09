@@ -122,7 +122,6 @@ for epoch in pbar:
     loss = model.train_step(train_data)
     loss.backward()
     if args.grad_norm > 0:
-        # gradient clipping
         nn.utils.clip_grad_norm_(model.parameters(), args.grad_norm)
     optimizer.step()
     pbar.set_description(f'Loss: {loss.item():.4f}')

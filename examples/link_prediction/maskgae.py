@@ -52,7 +52,7 @@ parser.add_argument('--grad_norm', type=float, default=1.0,
                     help='grad_norm for training. (default: 1.0.)')
 
 parser.add_argument('--alpha', type=float, default=0.003,
-                    help='loss weight for degree prediction. (default: 0.001)')
+                    help='loss weight for degree prediction. (default: 0.003)')
 parser.add_argument("--start", default="node",
                     help="Which Type to sample starting nodes for random walks, (default: node)")
 parser.add_argument('--p', type=float, default=0.7,
@@ -134,7 +134,6 @@ for epoch in pbar:
     loss = model.train_step(train_data, alpha=args.alpha)
     loss.backward()
     if args.grad_norm > 0:
-        # gradient clipping
         nn.utils.clip_grad_norm_(model.parameters(), args.grad_norm)
     optimizer.step()
     pbar.set_description(f'Loss: {loss.item():.4f}')

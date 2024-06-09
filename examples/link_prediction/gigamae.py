@@ -180,8 +180,7 @@ decoder = [FeatureDecoder(in_channels=args.hidden_channels,
                           ),
            FeatureDecoder(in_channels=args.hidden_channels,
                           hidden_channels=args.hidden_channels * 2,
-                          out_channels=node2vec_embeds.size(
-                              1) + pca_embeds.size(1),
+                          out_channels=node2vec_embeds.size(1) + pca_embeds.size(1),  # noqa
                           num_layers=args.decoder_layers,
                           dropout=args.decoder_dropout,
                           )
@@ -207,21 +206,18 @@ for epoch in pbar:
         train_data.edge_index, args.edge_p)
 
     mask_edge_node = mask_index_edge * train_data.edge_index[0]
-    mask_index_edge_binary = torch.zeros(train_data.x.shape[0]).to(device)
+    mask_index_edge_binary = torch.zeros(train_data.x.size(0), deivce=device)
     mask_index_edge_binary[mask_edge_node] = 1
-    mask_index_edge_binary = mask_index_edge_binary.to(bool)
+    mask_index_edge_binary = mask_index_edge_binary.to(torch.bool)
     mask_both_node_edge = mask_index_edge_binary & mask_index_node_binary
-    mask_index_node_binary_sole = mask_index_node_binary & (
-        ~mask_both_node_edge)
-    mask_index_edge_binary_sole = mask_index_edge_binary & (
-        ~mask_both_node_edge)
+    mask_index_node_binary_sole = mask_index_node_binary & (~mask_both_node_edge)  # noqa
+    mask_index_edge_binary_sole = mask_index_edge_binary & (mask_both_node_edge)  # noqa
 
     loss = model.train_step(emb_node2vec=node2vec_embeds, emb_pca=pca_embeds,
                             mask_x=mask_x, mask_edge=mask_edge, mask_index_node=mask_index_node_binary_sole,
                             mask_index_edge=mask_index_edge_binary_sole, mask_both_node_edge=mask_both_node_edge)
     loss.backward()
     if args.grad_norm > 0:
-        # gradient clipping
         nn.utils.clip_grad_norm_(model.parameters(), args.grad_norm)
     optimizer.step()
     pbar.set_description(f'Loss: {loss.item():.4f}')
