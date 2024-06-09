@@ -90,6 +90,7 @@ encoder = GNNEncoder(in_channels=data.num_features,
 
 decoder = FeatureDecoder(in_channels=args.encoder_channels,
                          hidden_channels=args.decoder_channels,
+                         out_channels=data.num_features,
                          num_layers=args.decoder_layers,
                          dropout=args.decoder_dropout,
                          norm=args.decoder_norm)
