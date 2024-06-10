@@ -1,5 +1,5 @@
 # lrGAE: graph autoencoders as contrastive learning architectures
-![](imgs/cases2.png)
+![](imgs/cases.png)
 
 
 # 🚀 Installation
@@ -38,4 +38,3 @@ where `-e` means "editable" mode so you don't have to reinstall every time you m
 + GiGaMAE
 + S2GAE
 + 7 variants of lrGAE (our works)
-![](imgs/cases.png)
