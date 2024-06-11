@@ -19,7 +19,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--dataset", default="MUTAG",
                     help="Datasets. (default: MUTAG)")
 parser.add_argument("--mask", default="edge",
-                    help="Masking stractegy, `path`, `edge` or `None` (default: path)")
+                    help="Masking stractegy, `path`, `edge` or `None` (default: edge)")
 parser.add_argument('--seed', type=int, default=2024,
                     help='Random seed for model and dataset. (default: 2024)')
 
@@ -75,7 +75,7 @@ parser.add_argument('--graphclas_weight_decay', type=float, default=5e-5,
 parser.add_argument('--epochs', type=int, default=100,
                     help='Number of training epochs. (default: 100)')
 parser.add_argument('--runs', type=int, default=10,
-                    help='Number of runs or folds. (default: 10)')
+                    help='Number of runs. (default: 10)')
 parser.add_argument('--eval_steps', type=int, default=5, help='(default: 5)')
 parser.add_argument("--device", type=int, default=0)
 
@@ -125,7 +125,6 @@ encoder = GNNEncoder(in_channels=dataset.num_features,
                      norm=args.encoder_norm,
                      layer=args.layer,
                      activation=args.encoder_activation)
-
 decoder = EdgeDecoder(in_channels=args.encoder_channels,
                       hidden_channels=args.decoder_channels,
                       num_layers=args.decoder_layers,
@@ -154,7 +153,7 @@ for epoch in pbar:
     for data in loader:
         optimizer.zero_grad()
         data = data.to(device)
-        loss = model.train_step(data, alpha=args.alpha)
+        loss = model.train_step(data)
         loss.backward()
         if args.grad_norm > 0:
             nn.utils.clip_grad_norm_(model.parameters(), args.grad_norm)

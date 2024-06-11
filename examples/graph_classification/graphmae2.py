@@ -40,7 +40,7 @@ parser.add_argument('--decoder_channels', type=int, default=32,
 parser.add_argument("--decoder_activation", default="prelu",
                     help="Activation function for GNN encoder, (default: prelu)")
 parser.add_argument('--decoder_layers', type=int, default=1,
-                    help='Number of layers for decoders. (default: 2)')
+                    help='Number of layers for decoders. (default: 1)')
 parser.add_argument('--decoder_dropout', type=float, default=0.2,
                     help='Dropout probability of decoder. (default: 0.2)')
 parser.add_argument("--decoder_norm", default="none",
@@ -59,7 +59,7 @@ parser.add_argument("--replace_rate", type=float, default=0.0)
 parser.add_argument("--num_remasking", type=int, default=3)
 
 parser.add_argument('--lr', type=float, default=0.0001,
-                    help='Learning rate for training. (default: 0.01)')
+                    help='Learning rate for training. (default: 0.0001)')
 parser.add_argument('--batch_size', type=int, default=128,
                     help='Learning batch size. (default: 128)')
 parser.add_argument('--weight_decay', type=float, default=0,
@@ -76,11 +76,11 @@ parser.add_argument('--graphclas_weight_decay', type=float, default=5e-5,
 parser.add_argument("--mode", default="last",
                     help="Embedding mode `last` or `cat` (default: last)")
 
-parser.add_argument('--epochs', type=int, default=1500,
-                    help='Number of training epochs. (default: 1500)')
-parser.add_argument('--runs', type=int, default=1,
-                    help='Number of runs. (default: 1)')
-parser.add_argument('--eval_steps', type=int, default=50, help='(default: 50)')
+parser.add_argument('--epochs', type=int, default=200,
+                    help='Number of training epochs. (default: 200)')
+parser.add_argument('--runs', type=int, default=10,
+                    help='Number of runs. (default: 10)')
+parser.add_argument('--eval_steps', type=int, default=5, help='(default: 5)')
 parser.add_argument("--device", type=int, default=0)
 
 
@@ -155,7 +155,7 @@ for epoch in pbar:
     for data in loader:
         optimizer.zero_grad()
         data = data.to(device)
-        loss = model.train_step(data, alpha=args.alpha)
+        loss = model.train_step(data)
         loss.backward()
         if args.grad_norm > 0:
             nn.utils.clip_grad_norm_(model.parameters(), args.grad_norm)

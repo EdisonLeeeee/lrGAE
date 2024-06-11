@@ -18,7 +18,7 @@ from lrgae.evaluators import GraphClasEvaluator
 parser = argparse.ArgumentParser()
 parser.add_argument("--dataset", default="MUTAG",
                     help="Datasets. (default: MUTAG)")
-parser.add_argument("--mask", default="path",
+parser.add_argument("--mask", default="edge",
                     help="Masking stractegy, `path`, `edge` or `None` (default: path)")
 parser.add_argument("--view", default="AA",
                     help="Contrastive graph views, `AA`, `AB` or `BB` (default: AA)")
@@ -77,11 +77,11 @@ parser.add_argument('--graphclas_weight_decay', type=float, default=5e-5,
 parser.add_argument("--mode", default="cat",
                     help="Embedding mode `last` or `cat` (default: last)")
 
-parser.add_argument('--epochs', type=int, default=500,
-                    help='Number of training epochs. (default: 500)')
-parser.add_argument('--runs', type=int, default=1,
-                    help='Number of runs. (default: 1)')
-parser.add_argument('--eval_steps', type=int, default=50, help='(default: 50)')
+parser.add_argument('--epochs', type=int, default=100,
+                    help='Number of training epochs. (default: 100)')
+parser.add_argument('--runs', type=int, default=10,
+                    help='Number of runs. (default: 10)')
+parser.add_argument('--eval_steps', type=int, default=5, help='(default: 5)')
 parser.add_argument("--device", type=int, default=0)
 
 
@@ -113,7 +113,7 @@ evaluator = GraphClasEvaluator(pooling=args.pooling,
 assert args.mask in ['path', 'edge', 'none']
 if args.mask == 'path':
     mask = MaskPath(p=args.p,
-                    num_nodes=dataset.num_nodes,
+                    num_nodes=None,
                     start=args.start,
                     walk_length=args.encoder_layers + 1)
 elif args.mask == 'edge':
@@ -154,7 +154,7 @@ for epoch in pbar:
     for data in loader:
         optimizer.zero_grad()
         data = data.to(device)
-        loss = model.train_step(data, alpha=args.alpha)
+        loss = model.train_step(data)
         loss.backward()
         if args.grad_norm > 0:
             nn.utils.clip_grad_norm_(model.parameters(), args.grad_norm)

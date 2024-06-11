@@ -1,5 +1,5 @@
 ```bash
-cd examples/graph_classification
+cd examples/graph_clustering
 ```
 
 
@@ -97,7 +97,7 @@ python graphmae.py --dataset Citeseer
 python graphmae.py --dataset Pubmed --mode cat
 python graphmae.py --dataset Photo
 python graphmae.py --dataset Computers
-python graphmae.py --dataset CS
+python graphmae.py --dataset CS --encoder_channels 512
 python graphmae.py --dataset Physics
 ```
 
@@ -108,7 +108,7 @@ python graphmae2.py --dataset Citeseer
 python graphmae2.py --dataset Pubmed --mode cat
 python graphmae2.py --dataset Photo
 python graphmae2.py --dataset Computers
-python graphmae2.py --dataset CS
+python graphmae2.py --dataset CS --encoder_channels 512
 python graphmae2.py --dataset Physics
 ```
 

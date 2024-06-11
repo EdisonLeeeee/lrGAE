@@ -83,11 +83,11 @@ parser.add_argument('--graphclas_weight_decay', type=float, default=5e-5,
 parser.add_argument("--mode", default="last",
                     help="Embedding mode `last` or `cat` (default: last)")
 
-parser.add_argument('--epochs', type=int, default=1500,
-                    help='Number of training epochs. (default: 1500)')
-parser.add_argument('--runs', type=int, default=1,
-                    help='Number of runs. (default: 1)')
-parser.add_argument('--eval_steps', type=int, default=50, help='(default: 50)')
+parser.add_argument('--epochs', type=int, default=200,
+                    help='Number of training epochs. (default: 200)')
+parser.add_argument('--runs', type=int, default=10,
+                    help='Number of runs. (default: 10)')
+parser.add_argument('--eval_steps', type=int, default=5, help='(default: 5)')
 parser.add_argument("--device", type=int, default=0)
 
 
@@ -202,7 +202,7 @@ for epoch in pbar:
         optimizer.step()
         loss_total += loss.item()
 
-    pbar.set_description(f'Loss: {loss_total.item():.4f}')
+    pbar.set_description(f'Loss: {loss_total:.4f}')
 
     if epoch % args.eval_steps == 0:
         print(f'\nEvaluating on epoch {epoch}...')

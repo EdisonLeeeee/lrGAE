@@ -61,8 +61,8 @@ parser.add_argument('--l2_normalize', action='store_true',
 
 parser.add_argument('--epochs', type=int, default=500,
                     help='Number of training epochs. (default: 500)')
-parser.add_argument('--runs', type=int, default=10,
-                    help='Number of runs. (default: 10)')
+parser.add_argument('--runs', type=int, default=1,
+                    help='Number of runs. (default: 1)')
 parser.add_argument('--eval_steps', type=int, default=50, help='(default: 50)')
 parser.add_argument("--device", type=int, default=0)
 
