@@ -7,70 +7,62 @@ import torch_geometric.transforms as T
 
 # custom modules
 from lrgae.dataset import load_dataset
-from lrgae.decoders import CrossCorrelationDecoder
+from lrgae.decoders import EdgeDecoder
 from lrgae.encoders import GNNEncoder
-from lrgae.masks import MaskEdge
-from lrgae.models import S2GAE
+from lrgae.models import GAE
 from lrgae.utils import set_seed
-from lrgae.evaluators import NodeClasEvaluator
+from lrgae.evaluators import GraphClusterEvaluator
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--dataset", nargs="?", default="Cora",
+parser.add_argument("--dataset", default="Cora",
                     help="Datasets. (default: Cora)")
 parser.add_argument('--seed', type=int, default=2024,
                     help='Random seed for model and dataset. (default: 2024)')
 
-parser.add_argument("--layer", nargs="?", default="gcn",
+parser.add_argument("--layer", default="gcn",
                     help="GNN layer, (default: gcn)")
-parser.add_argument("--encoder_activation", nargs="?", default="elu",
-                    help="Activation function for GNN encoder, (default: elu)")
-parser.add_argument('--encoder_channels', type=int, default=256,
-                    help='Channels of hidden representation. (default: 256)')
+parser.add_argument("--encoder_activation", default="relu",
+                    help="Activation function for GNN encoder, (default: relu)")
+parser.add_argument('--encoder_channels', type=int, default=64,
+                    help='Channels of hidden representation. (default: 64)')
 parser.add_argument('--encoder_layers', type=int, default=2,
                     help='Number of layers for encoder. (default: 2)')
 parser.add_argument('--encoder_dropout', type=float, default=0.5,
                     help='Dropout probability of encoder. (default: 0.5)')
-parser.add_argument("--encoder_norm", nargs="?",
+parser.add_argument("--encoder_norm",
                     default="none", help="Normalization (default: none)")
 
-parser.add_argument('--decoder_channels', type=int, default=128,
-                    help='Channels of decoder layers. (default: 128)')
-parser.add_argument('--decoder_layers', type=int, default=3,
-                    help='Number of layers for decoders. (default: 3)')
-parser.add_argument('--decoder_dropout', type=float, default=0.,
-                    help='Dropout probability of decoder. (default: 0.)')
-parser.add_argument("--decoder_norm", nargs="?",
+parser.add_argument('--decoder_channels', type=int, default=32,
+                    help='Channels of decoder layers. (default: 32)')
+parser.add_argument('--decoder_layers', type=int, default=2,
+                    help='Number of layers for decoders. (default: 2)')
+parser.add_argument('--decoder_dropout', type=float, default=0.2,
+                    help='Dropout probability of decoder. (default: 0.2)')
+parser.add_argument("--decoder_norm",
                     default="none", help="Normalization (default: none)")
 
-parser.add_argument('--lr', type=float, default=0.001,
-                    help='Learning rate for training. (default: 0.001)')
-parser.add_argument('--weight_decay', type=float, default=0,
-                    help='weight_decay for link prediction training. (default: 0)')
+parser.add_argument('--lr', type=float, default=0.01,
+                    help='Learning rate for training. (default: 0.01)')
+parser.add_argument('--weight_decay', type=float, default=5e-5,
+                    help='weight_decay for link prediction training. (default: 5e-5)')
 parser.add_argument('--grad_norm', type=float, default=1.0,
                     help='grad_norm for training. (default: 1.0.)')
 
-parser.add_argument('--p', type=float, default=0.7,
-                    help='Mask ratio or sample ratio for MaskEdge')
-parser.add_argument('--undirected', action='store_true',
-                    help='Whether to perform undirected masking. (default: False)')
-
-parser.add_argument("--mode", default="last",
-                    help="Embedding mode `last` or `cat` (default: last)")
 parser.add_argument('--l2_normalize', action='store_true',
                     help='Whether to use l2 normalize output embedding. (default: False)')
-parser.add_argument('--nodeclas_lr', type=float, default=0.01,
-                    help='Learning rate for training. (default: 0.01)')
-parser.add_argument('--nodeclas_weight_decay', type=float, default=0,
-                    help='weight_decay for node classification training. (default: 0)')
+parser.add_argument("--mode", default="last",
+                    help="Embedding mode `last` or `cat` (default: `last`)")
 
 parser.add_argument('--epochs', type=int, default=500,
                     help='Number of training epochs. (default: 500)')
-parser.add_argument('--runs', type=int, default=1,
-                    help='Number of runs. (default: 1)')
+parser.add_argument('--runs', type=int, default=10,
+                    help='Number of runs. (default: 10)')
 parser.add_argument('--eval_steps', type=int, default=50, help='(default: 50)')
 parser.add_argument("--device", type=int, default=0)
 
+
 args = parser.parse_args()
+
 set_seed(args.seed)
 
 if args.device < 0:
@@ -88,13 +80,10 @@ transform = T.Compose([
 ])
 data = load_dataset(root, args.dataset, transform=transform)
 
-evaluator = NodeClasEvaluator(lr=args.nodeclas_lr,
-                              weight_decay=args.nodeclas_weight_decay,
-                              mode=args.mode,
-                              l2_normalize=args.l2_normalize,
-                              device=device)
-mask = MaskEdge(p=args.p, undirected=args.undirected)
-
+evaluator = GraphClusterEvaluator(mode=args.mode,
+                                  l2_normalize=args.l2_normalize,
+                                  runs=args.runs,
+                                  device=device)
 encoder = GNNEncoder(in_channels=data.num_features,
                      hidden_channels=args.encoder_channels,
                      out_channels=args.encoder_channels,
@@ -104,13 +93,13 @@ encoder = GNNEncoder(in_channels=data.num_features,
                      layer=args.layer,
                      activation=args.encoder_activation)
 
-decoder = CrossCorrelationDecoder(in_channels=args.encoder_channels,
-                                  hidden_channels=args.decoder_channels,
-                                  num_layers=args.decoder_layers,
-                                  dropout=args.decoder_dropout,
-                                  norm=args.decoder_norm)
+decoder = EdgeDecoder(in_channels=args.encoder_channels,
+                      hidden_channels=args.decoder_channels,
+                      num_layers=args.decoder_layers,
+                      dropout=args.decoder_dropout,
+                      norm=args.decoder_norm)
 
-model = S2GAE(encoder, decoder, mask).to(device)
+model = GAE(encoder, decoder).to(device)
 
 best_metric = None
 optimizer = torch.optim.Adam(model.parameters(),

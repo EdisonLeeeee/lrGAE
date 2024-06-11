@@ -70,7 +70,7 @@ parser.add_argument('--nodeclas_lr', type=float, default=0.01,
 parser.add_argument('--nodeclas_weight_decay', type=float, default=5e-5,
                     help='weight_decay for node classification training. (default: 5e-5)')
 parser.add_argument("--mode", default="cat",
-                    help="Embedding mode `last` or `cat` (default: none)")
+                    help="Embedding mode `last` or `cat` (default: last)")
 
 parser.add_argument('--epochs', type=int, default=500,
                     help='Number of training epochs. (default: 500)')

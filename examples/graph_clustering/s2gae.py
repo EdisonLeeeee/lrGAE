@@ -12,7 +12,7 @@ from lrgae.encoders import GNNEncoder
 from lrgae.masks import MaskEdge
 from lrgae.models import S2GAE
 from lrgae.utils import set_seed
-from lrgae.evaluators import NodeClasEvaluator
+from lrgae.evaluators import GraphClusterEvaluator
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--dataset", nargs="?", default="Cora",
@@ -58,15 +58,11 @@ parser.add_argument("--mode", default="last",
                     help="Embedding mode `last` or `cat` (default: last)")
 parser.add_argument('--l2_normalize', action='store_true',
                     help='Whether to use l2 normalize output embedding. (default: False)')
-parser.add_argument('--nodeclas_lr', type=float, default=0.01,
-                    help='Learning rate for training. (default: 0.01)')
-parser.add_argument('--nodeclas_weight_decay', type=float, default=0,
-                    help='weight_decay for node classification training. (default: 0)')
 
 parser.add_argument('--epochs', type=int, default=500,
                     help='Number of training epochs. (default: 500)')
-parser.add_argument('--runs', type=int, default=1,
-                    help='Number of runs. (default: 1)')
+parser.add_argument('--runs', type=int, default=10,
+                    help='Number of runs. (default: 10)')
 parser.add_argument('--eval_steps', type=int, default=50, help='(default: 50)')
 parser.add_argument("--device", type=int, default=0)
 
@@ -88,11 +84,10 @@ transform = T.Compose([
 ])
 data = load_dataset(root, args.dataset, transform=transform)
 
-evaluator = NodeClasEvaluator(lr=args.nodeclas_lr,
-                              weight_decay=args.nodeclas_weight_decay,
-                              mode=args.mode,
-                              l2_normalize=args.l2_normalize,
-                              device=device)
+evaluator = GraphClusterEvaluator(mode=args.mode,
+                                  l2_normalize=args.l2_normalize,
+                                  runs=args.runs,
+                                  device=device)
 mask = MaskEdge(p=args.p, undirected=args.undirected)
 
 encoder = GNNEncoder(in_channels=data.num_features,
