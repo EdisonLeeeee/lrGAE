@@ -139,7 +139,7 @@ for epoch in pbar:
     pbar.set_description(f'Loss: {loss_total:.4f}')
 
     if epoch % args.eval_steps == 0:
-        print(f'\nEvaluating on epoch {epoch}...')
+        print(f'Evaluating on epoch {epoch}...')
         results = evaluator.evaluate(model, loader)
 
         if best_metric is None:

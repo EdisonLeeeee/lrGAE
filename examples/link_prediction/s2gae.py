@@ -120,7 +120,7 @@ for epoch in pbar:
     pbar.set_description(f'Loss: {loss.item():.4f}')
 
     if epoch % args.eval_steps == 0:
-        print(f'\nEvaluating on epoch {epoch}...')
+        print(f'Evaluating on epoch {epoch}...')
         left = right = list(range(args.encoder_layers))
         val_results = evaluator.evaluate(model, valid_data,
                                          left=left, right=right)
