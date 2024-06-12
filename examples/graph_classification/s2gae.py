@@ -38,8 +38,8 @@ parser.add_argument("--pooling", default="sum",
 
 parser.add_argument('--decoder_channels', type=int, default=128,
                     help='Channels of decoder layers. (default: 128)')
-parser.add_argument('--decoder_layers', type=int, default=3,
-                    help='Number of layers for decoders. (default: 3)')
+parser.add_argument('--decoder_layers', type=int, default=2,
+                    help='Number of layers for decoders. (default: 2)')
 parser.add_argument('--decoder_dropout', type=float, default=0.,
                     help='Dropout probability of decoder. (default: 0.)')
 parser.add_argument("--decoder_norm", nargs="?",

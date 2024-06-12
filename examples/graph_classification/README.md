@@ -43,7 +43,7 @@ python gae_f.py --dataset PROTEINS --pooling max
 python gae_f.py --dataset COLLAB --pooling max
 python gae_f.py --dataset MUTAG --pooling sum
 python gae_f.py --dataset REDDIT-BINARY --pooling max
-python gae_f.py --dataset NCI1 --pooling max
+python gae_f.py --dataset NCI1 --pooling sum
 ```
 
 + GAE
