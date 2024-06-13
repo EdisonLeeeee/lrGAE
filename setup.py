@@ -12,12 +12,11 @@ install_requires = [
 ]
 
 full_requires = [
-    'numba',
+    # 'numba',
     'pandas',
-    'matplotlib',
-    'networkx>=2.3',
+    # 'matplotlib',
+    # 'networkx>=2.3',
     'texttable',
-    'pandas',
     # 'gensim>=3.8.0',
 ]
 
@@ -41,13 +40,13 @@ setup(
     url=url,
     download_url='{}/archive/{}.tar.gz'.format(url, VERSION),
     keywords=[
-        'torch_geometric',
         'pytorch',
+        'pytorch-geometric',
         'benchmark',
         'geometric-auto-encoders',
         'graph-neural-networks',
     ],
-    python_requires='>=3.7',
+    python_requires='>=3.8',
     license="MIT LICENSE",
     install_requires=install_requires,
     extras_require={
