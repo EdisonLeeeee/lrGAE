@@ -1,4 +1,7 @@
-# lrGAE: graph autoencoders as contrastive learning architectures
+# Revisiting and Benchmarking Graph Autoencoders: A Contrastive Learning Perspective
+
+We introduce `lrGAE` benchmark --- graph autoencoders as contrastive learning architectures.
+
 ![](imgs/cases.png)
 
 
