@@ -31,18 +31,85 @@ def info_nce_loss(pos_out, neg_out):
     return -torch.log(pos_exp / (pos_exp + neg_exp) + 1e-15).mean()
 
 
+class SimCSE(nn.Module):
+    def __init__(self, decoder):
+        super().__init__()
+        self.decoder = decoder
+        
+    def forward(self, left, right, pairs, neg_pairs):
+        left = left[pairs[0]]
+        right = right[pairs[0]]
+        loss = simcse_loss(left, right)
+        return loss
+        
+class FusedNCE(nn.Module):
+    def __init__(self, decoder):
+        super().__init__()
+        self.decoder = decoder
+        
+    def forward(self, left, right, pairs, neg_pairs):
+        pos_out = self.decoder(left, right, pairs)
+        neg_out = self.decoder(left, right, neg_pairs)
+        loss = info_nce_loss(pos_out, neg_out)   
+        return loss
+
+class FusedLogRankAUC(nn.Module):
+    def __init__(self, decoder):
+        super().__init__()
+        self.decoder = decoder
+        
+    def forward(self, left, right, pairs, neg_pairs):
+        pos_out = self.decoder(left, right, pairs)
+        neg_out = self.decoder(left, right, neg_pairs)
+        loss = log_rank_loss(pos_out, neg_out)   
+        return loss
+        
+    def __repr__(self) -> str:
+        return f'{self.__class__.__name__}()'
+        
+class FusedHingeAUC(nn.Module):
+    def __init__(self, decoder):
+        super().__init__()
+        self.decoder = decoder
+        
+    def forward(self, left, right, pairs, neg_pairs):
+        pos_out = self.decoder(left, right, pairs)
+        neg_out = self.decoder(left, right, neg_pairs)
+        loss = hinge_auc_loss(pos_out, neg_out)   
+        return loss
+        
+    def __repr__(self) -> str:
+        return f'{self.__class__.__name__}()'
+        
+class FusedAUC(nn.Module):
+    def __init__(self, decoder):
+        super().__init__()
+        self.decoder = decoder
+        
+    def forward(self, left, right, pairs, neg_pairs):
+        pos_out = self.decoder(left, right, pairs)
+        neg_out = self.decoder(left, right, neg_pairs)
+        loss = auc_loss(pos_out, neg_out)   
+        return loss
+        
+    def __repr__(self) -> str:
+        return f'{self.__class__.__name__}()'
+        
+
 class FusedBCE(nn.Module):
     def __init__(self, decoder):
         super().__init__()
         self.decoder = decoder
         
-    def forward(self, left, right, paris, positive=True):
-        out = self.decoder(left, right, paris)
-        if positive:
-            labels = torch.ones_like(out)
-        else:
-            labels = torch.zeros_like(out)
-        loss = F.binary_cross_entropy(out, labels)   
+    def forward(self, left, right, pairs, neg_pairs=None):
+        pos_out = self.decoder(left, right, pairs)
+        labels = torch.ones_like(pos_out)
+        loss = F.binary_cross_entropy(pos_out, labels)   
+        
+        if neg_pairs is not None:
+            neg_out = self.decoder(left, right, neg_pairs)
+            neg_labels = torch.zeros_like(neg_out)
+            loss += F.binary_cross_entropy(neg_out, neg_labels)   
         return loss
         
     def __repr__(self) -> str:
@@ -57,41 +124,40 @@ class SCELoss(nn.Module):
         x = F.normalize(left, p=2, dim=-1)
         y = F.normalize(right, p=2, dim=-1)
     
-        # loss =  - (x * y).sum(dim=-1)
-        # loss = (x_h - y_h).norm(dim=1).pow(alpha)
-    
         loss = (1 - (x * y).sum(dim=-1)).pow_(self.alpha)
     
         loss = loss.mean()        
         return loss
     
 class SIGLoss(nn.Module):
-    def forward(self, x, y):
-        return sig_loss(x, y)    
+    def forward(self, left, right):
+        x = F.normalize(left, p=2, dim=-1)
+        y = F.normalize(right, p=2, dim=-1)
+        loss = (x * y).sum(1)
+        loss = torch.sigmoid(-loss)
+        loss = loss.mean()
+        return loss
 
-
-def sig_loss(x, y):
-    x = F.normalize(x, p=2, dim=-1)
-    y = F.normalize(y, p=2, dim=-1)
-
-    loss = (x * y).sum(1)
-    loss = torch.sigmoid(-loss)
-    loss = loss.mean()
-    return loss
-
-
-
-
+class NT_Xent(nn.Module):
+    def __init__(self, tau=0.5):
+        super().__init__()
+        self.tau = tau
+        
+    def forward(self, left, right):
+        f = lambda x: torch.exp(x / self.tau)
+    
+        refl_sim = f(cosine_similarity(left, left))
+        between_sim = f(cosine_similarity(left, right))
+        
+        loss = -torch.log(between_sim.diag() / (refl_sim.sum(1) + between_sim.sum(1) - refl_sim.diag()))
+        return loss
+        
+        
 def semi_loss(z1, z2, tau):
-    def sim(z1, z2):
-            z1 = F.normalize(z1)
-            z2 = F.normalize(z2)
-            return torch.mm(z1, z2.t())    
-
     f = lambda x: torch.exp(x / tau)
 
-    refl_sim = f(sim(z1, z1))
-    between_sim = f(sim(z1, z2))
+    refl_sim = f(cosine_similarity(z1, z1))
+    between_sim = f(cosine_similarity(z1, z2))
     
     loss = -torch.log(between_sim.diag() / (refl_sim.sum(1) + between_sim.sum(1) - refl_sim.diag()))
     return loss

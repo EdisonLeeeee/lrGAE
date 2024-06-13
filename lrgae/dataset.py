@@ -1,6 +1,6 @@
 import os.path as osp
 import torch
-
+import torch.nn.functional as F
 import torch_geometric.transforms as T
 from torch_geometric.data import Data
 from torch_geometric.datasets import Amazon, Coauthor, Planetoid, Reddit, TUDataset
@@ -81,7 +81,7 @@ def load_dataset(root: str, name: str, transform=None) -> Data:
         data = T.RandomNodeSplit(num_val=0.1, num_test=0.8)(data)
     elif name in ['IMDB-BINARY', 'IMDB-MULTI', 'PROTEINS', 'COLLAB', 
                   'MUTAG', 'REDDIT-BINARY','NCI1', 'REDDIT-MULTI-5K', 'DD']:
-        dataset = TUDataset(root, name, transform)
+        dataset = TUDataset(root, name, transform, use_node_attr=True)
         max_degree = 0.
         for data in dataset:
             max_degree = max(max_degree, degree(data.edge_index[0], 

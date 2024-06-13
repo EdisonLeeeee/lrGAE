@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from lrgae.losses import FusedBCE, SCELoss
+from lrgae.losses import FusedBCE, SCELoss, FusedAUC, FusedNCE, SimCSE
 from lrgae.utils import random_negative_sampler
 
 
@@ -20,7 +20,7 @@ class lrGAE(nn.Module):
     ):
         super().__init__()
         assert view in ['AA', 'AB', 'BB']
-        assert pair in ['vv', 'vu', 'uu']
+        assert pair in ['vv', 'vu']
 
         if pair == 'vv':
             self.train_step = self.train_step_feature
@@ -36,10 +36,21 @@ class lrGAE(nn.Module):
 
         if loss == "bce":
             self.loss_fn = FusedBCE(decoder)
+            assert pair == 'vu'
+        elif loss == 'auc':
+            self.loss_fn = FusedAUC(decoder)
+            assert pair == 'vu'
+        elif loss == 'nce':
+            self.loss_fn = FusedNCE(decoder)
+            assert pair == 'vu'        
+        elif loss == 'simcse':
+            self.loss_fn = SimCSE(decoder)            
         elif loss == 'mse':
             self.loss_fn = nn.MSELoss()
+            assert pair == 'vv'
         elif loss == 'sce':
             self.loss_fn = SCELoss(alpha=kwargs.get('alpha', 2.0))
+            assert pair == 'vv'
         else:
             raise ValueError(loss)
 
@@ -118,15 +129,12 @@ class lrGAE(nn.Module):
         left = zA[self.left]
         right = zB[self.right]
 
-        loss = self.loss_fn(left, right, masked_edges, positive=True)
-
         neg_edges = random_negative_sampler(
             num_nodes=graph.num_nodes,
             num_neg_samples=masked_edges.size(1),
             device=masked_edges.device,
         )
-
-        loss += self.loss_fn(left, right, neg_edges, positive=False)
+        loss = self.loss_fn(left, right, masked_edges, neg_edges)
         return loss
 
     def extra_repr(self) -> str:

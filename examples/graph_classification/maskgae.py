@@ -31,7 +31,7 @@ parser.add_argument('--encoder_channels', type=int, default=256,
                     help='Channels of hidden representation. (default: 256)')
 parser.add_argument('--encoder_layers', type=int, default=2,
                     help='Number of layers for encoder. (default: 2)')
-parser.add_argument('--encoder_dropout', type=float, default=0.8,
+parser.add_argument('--encoder_dropout', type=float, default=0.5,
                     help='Dropout probability of encoder. (default: 0.8)')
 parser.add_argument("--encoder_norm",
                     default="none", help="Normalization (default: none)")
@@ -47,8 +47,8 @@ parser.add_argument('--decoder_dropout', type=float, default=0.2,
 parser.add_argument("--decoder_norm",
                     default="none", help="Normalization (default: none)")
 
-parser.add_argument('--lr', type=float, default=0.01,
-                    help='Learning rate for training. (default: 0.01)')
+parser.add_argument('--lr', type=float, default=0.001,
+                    help='Learning rate for training. (default: 0.001)')
 parser.add_argument('--batch_size', type=int, default=128,
                     help='Learning batch size. (default: 128)')
 parser.add_argument('--weight_decay', type=float, default=0,

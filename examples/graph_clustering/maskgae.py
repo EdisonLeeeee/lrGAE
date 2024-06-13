@@ -26,7 +26,7 @@ parser.add_argument("--layer", default="gcn",
                     help="GNN layer, (default: gcn)")
 parser.add_argument("--encoder_activation", default="elu",
                     help="Activation function for GNN encoder, (default: elu)")
-parser.add_argument('--encoder_channels', type=int, default=256,
+parser.add_argument('--encoder_channels', type=int, default=128,
                     help='Channels of hidden representation. (default: 128)')
 parser.add_argument('--encoder_layers', type=int, default=2,
                     help='Number of layers for encoder. (default: 2)')
@@ -51,8 +51,8 @@ parser.add_argument('--weight_decay', type=float, default=5e-5,
 parser.add_argument('--grad_norm', type=float, default=1.0,
                     help='grad_norm for training. (default: 1.0.)')
 
-parser.add_argument('--alpha', type=float, default=0.001,
-                    help='loss weight for degree prediction. (default: 0.001)')
+parser.add_argument('--alpha', type=float, default=0.00,
+                    help='loss weight for degree prediction. (default: 0.00)')
 parser.add_argument("--start", default="node",
                     help="Which Type to sample starting nodes for random walks, (default: node)")
 parser.add_argument('--p', type=float, default=0.7,

@@ -20,8 +20,8 @@ parser.add_argument("--dataset", default="MUTAG",
 parser.add_argument('--seed', type=int, default=2024,
                     help='Random seed for model and dataset. (default: 2024)')
 
-parser.add_argument("--layer", default="gcn",
-                    help="GNN layer, (default: gcn)")
+parser.add_argument("--layer", default="gin",
+                    help="GNN layer, (default: gin)")
 parser.add_argument("--encoder_activation", default="relu",
                     help="Activation function for GNN encoder, (default: relu)")
 parser.add_argument('--encoder_channels', type=int, default=64,

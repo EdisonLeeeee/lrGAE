@@ -29,15 +29,12 @@ class GAE(nn.Module):
         z = self.encoder(x, edge_index)
         left = right = z[-1]
 
-        loss = self.loss_fn(left, right, edge_index, positive=True)
-
         neg_edges = random_negative_sampler(
             num_nodes=graph.num_nodes,
             num_neg_samples=edge_index.size(1),
             device=edge_index.device,
         )
-
-        loss += self.loss_fn(left, right, neg_edges, positive=False)
+        loss = self.loss_fn(left, right, edge_index, neg_edges)
         return loss
 
 

@@ -10,8 +10,8 @@ python lrgae_vu.py --dataset IMDB-MULTI --left 2 --right 1 --view AA --pooling m
 python lrgae_vu.py --dataset PROTEINS --left 2 --right 1 --view AA --pooling max
 python lrgae_vu.py --dataset COLLAB --left 2 --right 1 --view AA --pooling max
 python lrgae_vu.py --dataset MUTAG --left 2 --right 1 --view AA --pooling sum
-python lrgae_vu.py --dataset REDDIT-BINARY --left 2 --right 1 --view AA --pooling max
-python lrgae_vu.py --dataset NCI1 --left 2 --right 1 --view AA --pooling max
+python lrgae_vu.py --dataset REDDIT-BINARY --left 2 --right 1 --view AA --pooling max --layer gin
+python lrgae_vu.py --dataset NCI1 --left 2 --right 1 --view AA --pooling max --layer gin
 ```
 + lrGAE-7
 ```bash
@@ -20,8 +20,8 @@ python lrgae_vu.py --dataset IMDB-MULTI --view AB --pooling mean
 python lrgae_vu.py --dataset PROTEINS --view AB --pooling max
 python lrgae_vu.py --dataset COLLAB --view AB --pooling max
 python lrgae_vu.py --dataset MUTAG --view AB --pooling sum
-python lrgae_vu.py --dataset REDDIT-BINARY --view AB --pooling max
-python lrgae_vu.py --dataset NCI1 --view AB --pooling max
+python lrgae_vu.py --dataset REDDIT-BINARY --view AB --pooling max --layer gin
+python lrgae_vu.py --dataset NCI1 --view AB --pooling max --layer gin
 ```
 
 + lrGAE-8
@@ -31,8 +31,8 @@ python lrgae_vu.py --dataset IMDB-MULTI --left 2 --right 1 --view AB --pooling m
 python lrgae_vu.py --dataset PROTEINS --left 2 --right 1 --view AB --pooling max
 python lrgae_vu.py --dataset COLLAB --left 2 --right 1 --view AB --pooling max
 python lrgae_vu.py --dataset MUTAG --left 2 --right 1 --view AB --pooling sum
-python lrgae_vu.py --dataset REDDIT-BINARY --left 2 --right 1 --view AB --pooling max
-python lrgae_vu.py --dataset NCI1 --left 2 --right 1 --view AB --pooling max
+python lrgae_vu.py --dataset REDDIT-BINARY --left 2 --right 1 --view AB --pooling max --layer gin
+python lrgae_vu.py --dataset NCI1 --left 2 --right 1 --view AB --pooling max --layer gin
 ```
 
 + GAE$_f$
@@ -43,7 +43,7 @@ python gae_f.py --dataset PROTEINS --pooling max
 python gae_f.py --dataset COLLAB --pooling max
 python gae_f.py --dataset MUTAG --pooling sum
 python gae_f.py --dataset REDDIT-BINARY --pooling max
-python gae_f.py --dataset NCI1 --pooling sum
+python gae_f.py --dataset NCI1 --pooling max
 ```
 
 + GAE
@@ -64,8 +64,8 @@ python s2gae.py --dataset IMDB-MULTI --pooling mean
 python s2gae.py --dataset PROTEINS --pooling max
 python s2gae.py --dataset COLLAB --pooling max
 python s2gae.py --dataset MUTAG --pooling sum
-python s2gae.py --dataset REDDIT-BINARY --pooling max
-python s2gae.py --dataset NCI1 --pooling max
+python s2gae.py --dataset REDDIT-BINARY --pooling max  --layer gin
+python s2gae.py --dataset NCI1 --pooling max  --layer gin
 ```
 
 + MaskGAE
@@ -75,8 +75,8 @@ python maskgae.py --dataset IMDB-MULTI --pooling mean
 python maskgae.py --dataset PROTEINS --pooling max
 python maskgae.py --dataset COLLAB --pooling max
 python maskgae.py --dataset MUTAG --pooling sum
-python maskgae.py --dataset REDDIT-BINARY --pooling max
-python maskgae.py --dataset NCI1 --pooling max
+python maskgae.py --dataset REDDIT-BINARY --pooling max  --layer gin
+python maskgae.py --dataset NCI1 --pooling max  --layer gin
 ```
 
 + GraphMAE
@@ -87,7 +87,7 @@ python graphmae.py --dataset PROTEINS --pooling max
 python graphmae.py --dataset COLLAB --pooling max
 python graphmae.py --dataset MUTAG --pooling sum
 python graphmae.py --dataset REDDIT-BINARY --pooling max
-python graphmae.py --dataset NCI1 --pooling max
+python graphmae.py --dataset NCI1 --pooling max --encoder_norm batchnorm
 ```
 
 + GraphMAE2
