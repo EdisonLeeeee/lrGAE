@@ -23,6 +23,43 @@ class OneHotLabel(T.BaseTransform):
         else:
             data.x = y.to(torch.float)        
         return data
+import torch
+
+from torch_geometric.data import Data
+from torch_geometric.data.datapipes import functional_transform
+from torch_geometric.transforms import BaseTransform
+from torch_geometric.utils import degree, one_hot
+
+
+class OneHotDegree(T.BaseTransform):
+    def __init__(
+        self,
+        max_degree: int,
+        in_degree: bool = False,
+        cat: bool = True,
+    ) -> None:
+        self.max_degree = max_degree
+        self.in_degree = in_degree
+        self.cat = cat
+
+    def forward(self, data: Data) -> Data:
+        assert data.edge_index is not None
+        idx, x = data.edge_index[1 if self.in_degree else 0], data.x
+        deg = degree(idx, data.num_nodes, dtype=torch.long)
+        deg[deg > self.max_degree] = self.max_degree
+        deg = one_hot(deg, num_classes=self.max_degree + 1)
+
+        if x is not None and self.cat:
+            x = x.view(-1, 1) if x.dim() == 1 else x
+            data.x = torch.cat([x, deg.to(x.dtype)], dim=-1)
+        else:
+            data.x = deg
+
+        return data
+
+    def __repr__(self) -> str:
+        return f'{self.__class__.__name__}({self.max_degree})'
+
 
 def add_transform_to_dataset(dataset, transform):
     trans = dataset.transform
@@ -86,7 +123,8 @@ def load_dataset(root: str, name: str, transform=None) -> Data:
         for data in dataset:
             max_degree = max(max_degree, degree(data.edge_index[0], 
                                                 dtype=torch.long).max().item())
-        add_transform_to_dataset(dataset, T.OneHotDegree(max_degree))
+        max_degree = min(400, max_degree)
+        add_transform_to_dataset(dataset, OneHotDegree(max_degree))
         return dataset
     else:
         raise ValueError(name)

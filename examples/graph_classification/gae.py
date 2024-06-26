@@ -47,8 +47,8 @@ parser.add_argument("--decoder_norm",
 
 parser.add_argument('--lr', type=float, default=0.01,
                     help='Learning rate for training. (default: 0.01)')
-parser.add_argument('--batch_size', type=int, default=128,
-                    help='Learning batch size. (default: 128)')
+parser.add_argument('--batch_size', type=int, default=32,
+                    help='Learning batch size. (default: 32)')
 parser.add_argument('--weight_decay', type=float, default=0,
                     help='weight_decay for link prediction training. (default: 0.)')
 parser.add_argument('--grad_norm', type=float, default=1.0,

@@ -9,9 +9,10 @@ from torch_geometric.nn import global_add_pool, global_mean_pool, global_max_poo
 from sklearn.metrics import (average_precision_score,
                              roc_auc_score,
                              normalized_mutual_info_score,
-                             adjusted_rand_score)
+                             adjusted_rand_score,
+                             accuracy_score)
 from sklearn.model_selection import StratifiedKFold, GridSearchCV
-
+from sklearn.svm import SVC
 # custom modules
 from lrgae.decoders import (CrossCorrelationDecoder,
                             DotProductEdgeDecoder,
@@ -90,9 +91,11 @@ class GraphClasEvaluator:
                  l2_normalize: bool = False,
                  runs: int = 5,
                  epochs: int = 100,
+                 classifier: str = 'svm',
                  device: str = 'cpu',
                  ):
         assert runs > 1
+        assert classifier in ['lr', 'svm']
         if pooling == 'mean':
             self.pooling = global_mean_pool
         elif pooling == 'sum':
@@ -108,6 +111,7 @@ class GraphClasEvaluator:
         self.l2_normalize = l2_normalize
         self.runs = runs
         self.epochs = epochs
+        self.classifier = classifier
         self.device = device
 
     def evaluate(self, model, loader):
@@ -130,33 +134,54 @@ class GraphClasEvaluator:
 
         embeddings = torch.cat(embeddings, dim=0)
         y = torch.cat(y).squeeze()
-
-        num_features = embeddings.size(1)
-        num_classes = y.max().item() + 1
-        LR = LogisticRegression(num_features, num_classes,
-                                lr=self.lr,
-                                weight_decay=self.weight_decay,
-                                batch_size=self.batch_size,
-                                epochs=self.epochs,
-                                device=self.device)
-        kf = StratifiedKFold(n_splits=self.runs, shuffle=True, random_state=0)
-
-        results = []
-        for train_index, test_index in kf.split(embeddings, y):
-            train_x = embeddings[train_index].to(self.device)
-            train_y = y[train_index].to(self.device)
-
-            test_x = embeddings[test_index].to(self.device)
-            test_y = y[test_index].to(self.device)
-            LR.reset_parameters()
-            results.append(LR.fit(train_x,
-                                  train_y,
-                                  test_x,
-                                  test_y))
+        if self.classifier == 'svm':
+            results = evaluate_graph_embeddings_using_svm(embeddings.cpu(), y.cpu())
+        else:
+            num_features = embeddings.size(1)
+            num_classes = y.max().item() + 1
+            LR = LogisticRegression(num_features, num_classes,
+                                    lr=self.lr,
+                                    weight_decay=self.weight_decay,
+                                    batch_size=self.batch_size,
+                                    epochs=self.epochs,
+                                    device=self.device)
+            
+            kf = StratifiedKFold(n_splits=self.runs, shuffle=True, random_state=0)
+            results = []
+            for train_index, test_index in kf.split(embeddings, y):
+                train_x = embeddings[train_index].to(self.device)
+                train_y = y[train_index].to(self.device)
+    
+                test_x = embeddings[test_index].to(self.device)
+                test_y = y[test_index].to(self.device)
+                LR.reset_parameters()
+                results.append(LR.fit(train_x,
+                                      train_y,
+                                      test_x,
+                                      test_y))
 
         return {'acc': np.mean(results)}
 
+def evaluate_graph_embeddings_using_svm(embeddings, labels):
 
+    
+    kf = StratifiedKFold(n_splits=10, shuffle=True, random_state=0)
+    results = []
+    for train_index, test_index in kf.split(embeddings, labels):
+        x_train = embeddings[train_index]
+        x_test = embeddings[test_index]
+        y_train = labels[train_index]
+        y_test = labels[test_index]
+        params = {"C": [1e-3, 1e-2, 1e-1, 1, 10]}
+        svc = SVC(random_state=42)
+        clf = GridSearchCV(svc, params)
+        clf.fit(x_train, y_train)
+
+        preds = clf.predict(x_test)
+        acc = accuracy_score(y_test, preds)
+        results.append(acc)
+    return results
+    
 class LinkPredEvaluator:
     def __init__(self,
                  batch_size: int = 2**16,
@@ -322,42 +347,3 @@ class LogisticRegression:
         labels = torch.cat(labels, dim=0).cpu()
         logits = logits.argmax(1)
         return (logits == labels).float().mean().item()
-
-# def linear_probing_cv(x, y, test_ratio=0.1):
-#     from sklearn.linear_model import LogisticRegression
-#     from sklearn.metrics import accuracy_score, f1_score
-#     from sklearn.model_selection import GridSearchCV, train_test_split
-#     from sklearn.multiclass import OneVsRestClassifier
-#     from sklearn.preprocessing import OneHotEncoder, normalize
-#     from sklearn.svm import SVC
-
-#     def prob_to_one_hot(y_pred):
-#         ret = np.zeros(y_pred.shape, bool)
-#         indices = np.argmax(y_pred, axis=1)
-#         for i in range(y_pred.shape[0]):
-#             ret[i][indices[i]] = True
-#         return ret
-
-#     x = x.cpu().numpy()
-#     y = y.cpu().numpy().reshape(-1, 1)
-
-#     onehot_encoder = OneHotEncoder(categories='auto').fit(y)
-#     y = onehot_encoder.transform(y).toarray().astype(bool)
-
-#     X_train, X_test, y_train, y_test = train_test_split(
-#         x, y, test_size=test_ratio)
-#     logreg = LogisticRegression(solver='liblinear')
-#     c = 2.0 ** np.arange(-10, 10)
-
-#     clf = GridSearchCV(estimator=OneVsRestClassifier(logreg),
-#                        param_grid=dict(estimator__C=c), n_jobs=4, cv=5,
-#                        verbose=0)
-
-#     clf.fit(X_train, y_train)
-
-#     y_pred = clf.predict_proba(X_test)
-#     y_pred = prob_to_one_hot(y_pred)
-
-#     micro = f1_score(y_test, y_pred, average="micro")
-#     print(micro)
-#     return [micro]

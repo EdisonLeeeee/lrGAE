@@ -23,12 +23,12 @@ parser.add_argument("--layer", default="gin",
                     help="GNN layer, (default: gin)")
 parser.add_argument("--encoder_activation", default="prelu",
                     help="Activation function for GNN encoder, (default: prelu)")
-parser.add_argument('--encoder_channels', type=int, default=1024,
-                    help='Channels of hidden representation. (default: 1024)')
+parser.add_argument('--encoder_channels', type=int, default=512,
+                    help='Channels of hidden representation. (default: 512)')
 parser.add_argument('--encoder_layers', type=int, default=2,
                     help='Number of layers for encoder. (default: 2)')
-parser.add_argument('--encoder_dropout', type=float, default=0.5,
-                    help='Dropout probability of encoder. (default: 0.5)')
+parser.add_argument('--encoder_dropout', type=float, default=0.,
+                    help='Dropout probability of encoder. (default: 0.)')
 parser.add_argument("--encoder_norm",
                     default="none", help="Normalization (default: none)")
 parser.add_argument("--num_heads", type=int, default=4,
@@ -36,21 +36,21 @@ parser.add_argument("--num_heads", type=int, default=4,
 parser.add_argument("--pooling", default="sum",
                     help="Pooling layer, (default: sum)")
 
-parser.add_argument('--decoder_channels', type=int, default=32,
-                    help='Channels of decoder layers. (default: 32)')
+parser.add_argument('--decoder_channels', type=int, default=512,
+                    help='Channels of decoder layers. (default: 512)')
 parser.add_argument("--decoder_activation", default="prelu",
                     help="Activation function for GNN encoder, (default: prelu)")
 parser.add_argument('--decoder_layers', type=int, default=1,
                     help='Number of layers for decoders. (default: 1)')
-parser.add_argument('--decoder_dropout', type=float, default=0.2,
-                    help='Dropout probability of decoder. (default: 0.2)')
+parser.add_argument('--decoder_dropout', type=float, default=0.,
+                    help='Dropout probability of decoder. (default: 0.)')
 parser.add_argument("--decoder_norm", default="none",
                     help="Normalization (default: none)")
 
 parser.add_argument('--lr', type=float, default=0.0001,
                     help='Learning rate for training. (default: 0.0001)')
-parser.add_argument('--batch_size', type=int, default=128,
-                    help='Learning batch size. (default: 128)')
+parser.add_argument('--batch_size', type=int, default=32,
+                    help='Learning batch size. (default: 32)')
 parser.add_argument('--weight_decay', type=float, default=0,
                     help='weight_decay for link prediction training. (default: 0.)')
 parser.add_argument('--grad_norm', type=float, default=1.0,
@@ -62,7 +62,7 @@ parser.add_argument("--replace_rate", type=float, default=0.0)
 parser.add_argument("--alpha", type=float, default=3,
                     help="`pow`coefficient for `sce` loss")
 
-parser.add_argument("--mode", default="cat",
+parser.add_argument("--mode", default="last",
                     help="Embedding mode `last` or `cat` (default: `last`)")
 parser.add_argument('--l2_normalize', action='store_true',
                     help='Whether to use l2 normalize output embedding. (default: False)')
@@ -107,7 +107,7 @@ evaluator = GraphClasEvaluator(pooling=args.pooling,
 
 num_heads = args.num_heads
 encoder = GNNEncoder(in_channels=dataset.num_features,
-                     hidden_channels=args.encoder_channels // num_heads,
+                     hidden_channels=args.encoder_channels // num_heads if args.layer == 'gat' else args.encoder_channels,
                      out_channels=args.encoder_channels,
                      num_layers=args.encoder_layers,
                      dropout=args.encoder_dropout,
@@ -117,7 +117,7 @@ encoder = GNNEncoder(in_channels=dataset.num_features,
                      activation=args.encoder_activation)
 neck = nn.Linear(args.encoder_channels, args.encoder_channels, bias=False)
 decoder = GNNEncoder(in_channels=args.encoder_channels,
-                     hidden_channels=args.decoder_channels,
+                     hidden_channels=args.decoder_channels // num_heads if args.layer == 'gat' else args.decoder_channels,
                      out_channels=dataset.num_features,
                      num_layers=args.decoder_layers,
                      dropout=args.decoder_dropout,

@@ -23,8 +23,8 @@ parser.add_argument('--seed', type=int, default=2024,
 parser.add_argument("--layer", default="gin", help="GNN layer, (default: gin)")
 parser.add_argument("--encoder_activation", default="prelu",
                     help="Activation function for GNN encoder, (default: elu)")
-parser.add_argument('--encoder_channels', type=int, default=1024,
-                    help='Channels of hidden representation. (default: 1024)')
+parser.add_argument('--encoder_channels', type=int, default=512,
+                    help='Channels of hidden representation. (default: 512)')
 parser.add_argument('--encoder_layers', type=int, default=2,
                     help='Number of layers for encoder. (default: 2)')
 parser.add_argument('--encoder_dropout', type=float, default=0.2,
@@ -38,8 +38,8 @@ parser.add_argument("--uniformity_dim", type=int,
 parser.add_argument("--pooling", default="sum",
                     help="Pooling layer, (default: sum)")
 
-parser.add_argument('--decoder_channels', type=int, default=32,
-                    help='Channels of decoder layers. (default: 32)')
+parser.add_argument('--decoder_channels', type=int, default=512,
+                    help='Channels of decoder layers. (default: 512)')
 parser.add_argument("--decoder_activation", default="prelu",
                     help="Activation function for GNN encoder, (default: prelu)")
 parser.add_argument('--decoder_layers', type=int, default=1,
@@ -67,8 +67,8 @@ parser.add_argument("--belta", type=float, default=1)
 parser.add_argument('--lr', type=float, default=0.0001,
                     help='Learning rate for training. (default: 0.0001)')
 parser.add_argument("--lr_mask", type=float, default=0.0001)
-parser.add_argument('--batch_size', type=int, default=128,
-                    help='Learning batch size. (default: 128)')
+parser.add_argument('--batch_size', type=int, default=32,
+                    help='Learning batch size. (default: 32)')
 parser.add_argument('--weight_decay', type=float, default=0,
                     help='weight_decay for link prediction training. (default: 0.)')
 parser.add_argument('--grad_norm', type=float, default=1.0,
@@ -120,7 +120,7 @@ evaluator = GraphClasEvaluator(pooling=args.pooling,
 
 num_heads = args.num_heads
 encoder = GNNEncoder(in_channels=dataset.num_features,
-                     hidden_channels=args.encoder_channels // num_heads,
+                     hidden_channels=args.encoder_channels // num_heads if args.layer == 'gat' else args.encoder_channels,
                      out_channels=args.encoder_channels,
                      num_layers=args.encoder_layers,
                      dropout=args.encoder_dropout,
@@ -132,7 +132,7 @@ neck = nn.Linear(args.encoder_channels, args.encoder_channels, bias=False)
 uniformity_layer = nn.Linear(
     args.encoder_channels, args.uniformity_dim, bias=False)
 decoder = GNNEncoder(in_channels=args.encoder_channels,
-                     hidden_channels=args.decoder_channels,
+                     hidden_channels=args.decoder_channels // num_heads if args.layer == 'gat' else args.decoder_channels,
                      out_channels=dataset.num_features,
                      num_layers=args.decoder_layers,
                      dropout=args.decoder_dropout,
@@ -142,7 +142,7 @@ decoder = GNNEncoder(in_channels=args.encoder_channels,
                      add_last_act=False,
                      add_last_bn=False)
 mask_generator = GNNEncoder(in_channels=dataset.num_features,
-                            hidden_channels=args.encoder_channels // num_heads,
+                            hidden_channels=args.encoder_channels // num_heads if args.layer == 'gat' else args.encoder_channels,
                             out_channels=args.encoder_channels,
                             num_layers=args.encoder_layers,
                             dropout=args.encoder_dropout,

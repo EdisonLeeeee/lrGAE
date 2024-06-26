@@ -1,7 +1,7 @@
 from typing import Any, Optional, Union
 
 import torch
-from torch import Tensor
+from torch import nn, Tensor
 from torch_geometric.nn import (GATConv, GATv2Conv, GCNConv, GINConv, Linear,
                                 SAGEConv)
 from torch_geometric.resolver import resolver
@@ -46,7 +46,12 @@ def layer_resolver(name, first_channels, second_channels, heads=1):
     elif name == "gcn":
         layer = GCNConv(first_channels, second_channels)
     elif name == "gin":
-        layer = GINConv(Linear(first_channels, second_channels), train_eps=True)
+        layer = GINConv(nn.Sequential(Linear(first_channels, second_channels), 
+                                      nn.LayerNorm(second_channels),
+                                      nn.PReLU(),
+                                      Linear(second_channels, second_channels),
+                                      # nn.LayerNorm(second_channels),
+                                     ), train_eps=True)
     elif name == "gat":
         layer = GATConv(-1, second_channels, heads=heads)
     elif name == "gat2":
