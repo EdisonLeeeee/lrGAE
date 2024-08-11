@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 from lrgae.losses import FusedBCE, SCELoss, FusedAUC, FusedNCE, SimCSE
-from lrgae.utils import random_negative_sampler
+from lrgae.negative_sampling import negative_sampling
 
 
 class lrGAE(nn.Module):
@@ -16,12 +16,15 @@ class lrGAE(nn.Module):
         right: int = 2,
         view: str = 'AA',
         pair: str = 'vv',
+        negative_sampler = 'random',
         **kwargs,
     ):
         super().__init__()
         assert view in ['AA', 'AB', 'BB']
         assert pair in ['vv', 'vu']
-
+        assert negative_sampler in ['random', 'similarity', 'degree', 'hard_negative']
+        self.negative_sampler = negative_sampler    
+        
         if pair == 'vv':
             self.train_step = self.train_step_feature
         else:
@@ -129,11 +132,14 @@ class lrGAE(nn.Module):
         left = zA[self.left]
         right = zB[self.right]
 
-        neg_edges = random_negative_sampler(
-            num_nodes=graph.num_nodes,
-            num_neg_samples=masked_edges.size(1),
-            device=masked_edges.device,
-        )
+        neg_edges = negative_sampling(self.negative_sampler,
+                                      x=graph.x, 
+                                      edge_index=graph.edge_index,
+                                      num_neg_samples=masked_edges.size(1),
+                                      left=left,
+                                      right=right,  
+                                      decoder=self.decoder,
+                                     )
         loss = self.loss_fn(left, right, masked_edges, neg_edges)
         return loss
 

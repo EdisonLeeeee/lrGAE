@@ -3,7 +3,7 @@ import torch.nn as nn
 from torch_geometric.data import Data
 
 from lrgae.losses import FusedBCE
-from lrgae.utils import random_negative_sampler
+from lrgae.negative_sampling import negative_sampling
 
 
 class S2GAE(nn.Module):
@@ -12,12 +12,15 @@ class S2GAE(nn.Module):
         encoder,
         decoder,
         mask,
+        negative_sampler = 'hard_negative',
     ):
         super().__init__()
         self.encoder = encoder
         self.decoder = decoder
         self.mask = mask
         self.loss_fn = FusedBCE(decoder)
+        assert negative_sampler in ['random', 'similarity', 'degree', 'hard_negative']
+        self.negative_sampler = negative_sampler
 
     def reset_parameters(self):
         self.encoder.reset_parameters()
@@ -34,10 +37,13 @@ class S2GAE(nn.Module):
         z = self.encoder(x, remaining_edge_index)
 
         left = right = z[1:]
-        neg_edges = random_negative_sampler(
-            num_nodes=graph.num_nodes,
-            num_neg_samples=masked_edges.size(1),
-            device=masked_edges.device,
-        )
+        neg_edges = negative_sampling(self.negative_sampler,
+                                      x=graph.x, 
+                                      edge_index=graph.edge_index,
+                                      num_neg_samples=masked_edges.size(1),
+                                      left=left,
+                                      right=right,  
+                                      decoder=self.decoder,
+                                     )
         loss = self.loss_fn(left, right, masked_edges, neg_edges)
         return loss

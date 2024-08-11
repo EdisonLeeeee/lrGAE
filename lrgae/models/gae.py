@@ -3,7 +3,7 @@ import torch.nn as nn
 from torch_geometric.data import Data
 
 from lrgae.losses import FusedBCE
-from lrgae.utils import random_negative_sampler
+from lrgae.negative_sampling import negative_sampling
 
 
 class GAE(nn.Module):
@@ -11,11 +11,14 @@ class GAE(nn.Module):
         self,
         encoder,
         decoder,
+        negative_sampler = 'random',
     ):
         super().__init__()
         self.encoder = encoder
         self.decoder = decoder
         self.loss_fn = FusedBCE(decoder)
+        assert negative_sampler in ['random', 'similarity', 'degree', 'hard_negative']
+        self.negative_sampler = negative_sampler
 
     def reset_parameters(self):
         self.encoder.reset_parameters()
@@ -29,13 +32,17 @@ class GAE(nn.Module):
         z = self.encoder(x, edge_index)
         left = right = z[-1]
 
-        neg_edges = random_negative_sampler(
-            num_nodes=graph.num_nodes,
-            num_neg_samples=edge_index.size(1),
-            device=edge_index.device,
-        )
+        neg_edges = negative_sampling(self.negative_sampler,
+                                      x=x, 
+                                      edge_index=edge_index,
+                                      num_neg_samples=edge_index.size(1),
+                                      left=left,
+                                      right=right,  
+                                      decoder=self.decoder,
+                                     )
         loss = self.loss_fn(left, right, edge_index, neg_edges)
         return loss
+        
 
 
 class GAE_f(nn.Module):
