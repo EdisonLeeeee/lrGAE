@@ -6,6 +6,7 @@ import torch.nn.functional as F
 from torch import Tensor, nn
 from torch.utils.data import DataLoader, TensorDataset
 from torch_geometric.nn import global_add_pool, global_mean_pool, global_max_pool
+from torch_geometric.data import Data, HeteroData
 from sklearn.metrics import (average_precision_score,
                              roc_auc_score,
                              normalized_mutual_info_score,
@@ -30,6 +31,7 @@ class NodeClasEvaluator:
                  runs: int = 1,
                  epochs: int = 100,
                  device: str = 'cpu',
+                 node_type: str = None,
                  ):
         self.lr = lr
         self.weight_decay = weight_decay
@@ -39,13 +41,19 @@ class NodeClasEvaluator:
         self.runs = runs
         self.epochs = epochs
         self.device = device
+        self.node_type = node_type # hetero graph only
 
     def evaluate(self, model, data):
         model.eval()
-
+        data = data.to(self.device)
+        
         with torch.no_grad():
-            embeddings = model(data.x.to(self.device),
-                               data.edge_index.to(self.device))[1:]
+            if isinstance(data, Data):
+                embeddings = model(data.x, data.edge_index)[1:]
+            else:
+                embedding_dict = model(data.x_dict, data.edge_index_dict)[1:]
+                embeddings = [e[self.node_type] for e in embedding_dict]
+                                   
             if self.mode == 'cat':
                 embeddings = torch.cat(embeddings, dim=-1)
             else:
@@ -54,7 +62,10 @@ class NodeClasEvaluator:
             if self.l2_normalize:
                 embeddings = F.normalize(embeddings, p=2, dim=1)
 
+        if isinstance(data, HeteroData):
+            data = data[self.node_type]
         y = data.y.squeeze().to(self.device)
+            
         train_x, train_y = embeddings[data.train_mask], y[data.train_mask]
         val_x, val_y = embeddings[data.val_mask], y[data.val_mask]
         test_x, test_y = embeddings[data.test_mask], y[data.test_mask]

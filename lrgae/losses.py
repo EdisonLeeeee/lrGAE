@@ -114,7 +114,29 @@ class FusedBCE(nn.Module):
         
     def __repr__(self) -> str:
         return f'{self.__class__.__name__}()'
-  
+
+class HeteroFusedBCE(nn.Module):
+    def __init__(self, decoder):
+        super().__init__()
+        self.decoder = decoder
+        
+    def forward(self, left, right, pairs, neg_pairs=None):
+        loss = 0.
+        out = self.decoder(left, right, pairs)
+        for edge_type, pos_out in out.items():
+            labels = torch.ones_like(pos_out)
+            loss += F.binary_cross_entropy(pos_out, labels)   
+        
+        if neg_pairs is not None:
+            out = self.decoder(left, right, neg_pairs)
+            for edge_type, neg_out in out.items():
+                neg_labels = torch.zeros_like(neg_out)
+                loss += F.binary_cross_entropy(neg_out, neg_labels)   
+        return loss
+        
+    def __repr__(self) -> str:
+        return f'{self.__class__.__name__}()'
+        
 class SCELoss(nn.Module):
     def __init__(self, alpha=3):
         super().__init__()

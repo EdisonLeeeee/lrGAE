@@ -7,33 +7,32 @@ import torch_geometric.transforms as T
 
 # custom modules
 from lrgae.dataset import load_dataset
-from lrgae.decoders import EdgeDecoder, FeatureDecoder
-from lrgae.encoders import GNNEncoder
-from lrgae.masks import MaskEdge, MaskPath, NullMask
+from lrgae.decoders import HeteroEdgeDecoder
+from lrgae.masks import MaskHeteroEdge
+from lrgae.models import MaskGAE
+from lrgae.encoders import HeteroGNNEncoder
 from lrgae.models import MaskGAE
 from lrgae.utils import set_seed
 from lrgae.evaluators import NodeClasEvaluator
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--dataset", default="Cora",
-                    help="Datasets. (default: Cora)")
-parser.add_argument("--mask", default="path",
-                    help="Masking stractegy, `path`, `edge` or `None` (default: path)")
+parser.add_argument("--dataset", default="DBLP",
+                    help="Datasets. (default: DBLP)")
 parser.add_argument('--seed', type=int, default=2024,
                     help='Random seed for model and dataset. (default: 2024)')
 
-parser.add_argument("--layer", default="gcn",
-                    help="GNN layer, (default: gcn)")
-parser.add_argument("--encoder_activation", default="elu",
-                    help="Activation function for GNN encoder, (default: elu)")
+parser.add_argument("--layer", default="sage",
+                    help="GNN layer, (default: sage)")
+parser.add_argument("--encoder_activation", default="relu",
+                    help="Activation function for GNN encoder, (default: relu)")
 parser.add_argument('--encoder_channels', type=int, default=256,
-                    help='Channels of hidden representation. (default: 256)')
+                    help='Channels of hidden representation. (default: 128)')
 parser.add_argument('--encoder_layers', type=int, default=2,
                     help='Number of layers for encoder. (default: 2)')
-parser.add_argument('--encoder_dropout', type=float, default=0.8,
-                    help='Dropout probability of encoder. (default: 0.8)')
+parser.add_argument('--encoder_dropout', type=float, default=0.5,
+                    help='Dropout probability of encoder. (default: 0.5)')
 parser.add_argument("--encoder_norm",
-                    default="none", help="Normalization (default: none)")
+                    default="batchnorm", help="Normalization (default: batchnorm)")
 
 parser.add_argument('--decoder_channels', type=int, default=32,
                     help='Channels of decoder layers. (default: 32)')
@@ -92,26 +91,19 @@ transform = T.Compose([
     T.ToUndirected(),
     T.ToDevice(device),
 ])
-data = load_dataset(root, args.dataset, transform=transform)
+data = load_dataset(root, args.dataset, transform=transform).to(device)
+node_type = [t for t in data.node_types if data[t].get('y') is not None][0]
 
 evaluator = NodeClasEvaluator(lr=args.nodeclas_lr,
                               weight_decay=args.nodeclas_weight_decay,
                               mode=args.mode,
                               l2_normalize=args.l2_normalize,
+                              node_type=node_type,
                               device=device)
 
-assert args.mask in ['path', 'edge', 'none']
-if args.mask == 'path':
-    mask = MaskPath(p=args.p,
-                    num_nodes=data.num_nodes,
-                    start=args.start,
-                    walk_length=args.encoder_layers + 1)
-elif args.mask == 'edge':
-    mask = MaskEdge(p=args.p)
-else:
-    mask = NullMask()  # vanilla GAE
+mask = MaskHeteroEdge(p=args.p)
 
-encoder = GNNEncoder(in_channels=data.num_features,
+encoder = HeteroGNNEncoder(data.metadata(),
                      hidden_channels=args.encoder_channels,
                      out_channels=args.encoder_channels,
                      num_layers=args.encoder_layers,
@@ -120,19 +112,13 @@ encoder = GNNEncoder(in_channels=data.num_features,
                      layer=args.layer,
                      activation=args.encoder_activation)
 
-decoder = EdgeDecoder(in_channels=args.encoder_channels,
+decoder = HeteroEdgeDecoder(data.metadata(),
                       hidden_channels=args.decoder_channels,
                       num_layers=args.decoder_layers,
                       dropout=args.decoder_dropout,
                       norm=args.decoder_norm)
-degree_decoder = FeatureDecoder(in_channels=args.encoder_channels,
-                                hidden_channels=args.decoder_channels,
-                                num_layers=args.decoder_layers,
-                                dropout=args.decoder_dropout,
-                                norm=args.decoder_norm)
 
-model = MaskGAE(encoder, decoder, mask,
-                degree_decoder=degree_decoder).to(device)
+model = MaskGAE(encoder, decoder, mask).to(device)
 
 best_metric = None
 optimizer = torch.optim.Adam(model.parameters(),

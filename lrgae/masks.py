@@ -159,6 +159,30 @@ class MaskEdge(nn.Module):
     def extra_repr(self):
         return f"p={self.p}, undirected={self.undirected}"
 
+class MaskHeteroEdge(nn.Module):
+    def __init__(self, p: float=0.7):
+        super().__init__()
+        self.p = p
+
+    def forward(self, data):
+        remaining_graph = copy(data)
+        masked_graph = copy(data)        
+        
+        for edge_type in data.edge_types:
+            src, _, dst = edge_type
+            edge_index = data[edge_type].edge_index
+            remaining_edges, masked_edges = mask_edge(edge_index, p=self.p)
+            remaining_graph[edge_type].edge_index = remaining_edges
+            remaining_graph[edge_type].masked_edges = masked_edges
+            
+            masked_graph[edge_type].edge_index = masked_edges
+            masked_graph[edge_type].masked_edges = remaining_edges
+        
+        return remaining_graph, masked_graph
+
+    def extra_repr(self):
+        return f"p={self.p}"   
+        
 class MaskFeature(nn.Module):
     def __init__(self, p: float=0.7):
         super().__init__()

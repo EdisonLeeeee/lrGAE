@@ -3,9 +3,26 @@ import torch
 import torch.nn.functional as F
 import torch_geometric.transforms as T
 from torch_geometric.data import Data
-from torch_geometric.datasets import Amazon, Coauthor, Planetoid, Reddit, TUDataset
+from torch_geometric.datasets import Amazon, Coauthor, Planetoid, Reddit, TUDataset, HGBDataset
 from torch_geometric.utils import index_to_mask, degree
 
+def generate_random_splits(num_nodes, train_ratio, val_ratio):
+    test_ratio = 1 - train_ratio - val_ratio
+    train_mask = torch.full((num_nodes, ), False, dtype=torch.bool)
+    val_mask = torch.full((num_nodes, ), False, dtype=torch.bool)
+    test_mask = torch.full((num_nodes, ), False, dtype=torch.bool)
+
+    permute = torch.randperm(num_nodes)
+    train_idx = permute[: int(train_ratio * num_nodes)]
+    val_idx = permute[int(train_ratio * num_nodes)
+                          : int((train_ratio + val_ratio) * num_nodes)]
+    test_idx = permute[int(1 - test_ratio * num_nodes):]
+    train_mask[train_idx] = True
+    val_mask[val_idx] = True
+    test_mask[test_idx] = True
+
+    return train_mask, val_mask, test_mask
+    
 class NullTransform(T.BaseTransform):
     def forward(self, data):
         return data
@@ -126,6 +143,26 @@ def load_dataset(root: str, name: str, transform=None) -> Data:
         max_degree = min(400, max_degree)
         add_transform_to_dataset(dataset, OneHotDegree(max_degree))
         return dataset
+    elif name in ['ACM', 'DBLP', 'IMDB', 'FreeBase']:
+        data = HGBDataset(root=f'{root}/HGBDataset', name=name.lower(), transform=transform)[0]
+        if name == 'ACM':
+            data['term'].x = torch.zeros(data['term'].num_nodes, 1)
+        elif name == 'IMDB':
+            data['keyword'].x = torch.zeros(data['keyword'].num_nodes, 1)
+        else:
+            for nt in data.node_types:
+                if data[nt].get('x') is None:
+                    data[nt].x = torch.eye(data[nt].num_nodes)        
+                    
+        node_type = [t for t in data.node_types if data[t].get('y') is not None][0]
+        train_mask, val_mask, test_mask = generate_random_splits(
+            num_nodes=data[node_type].num_nodes,
+            train_ratio=0.6,
+            val_ratio=0.2,
+        )
+        data[node_type].train_mask = train_mask
+        data[node_type].val_mask = val_mask
+        data[node_type].test_mask = test_mask          
     else:
         raise ValueError(name)
     return data
