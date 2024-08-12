@@ -7,10 +7,10 @@ import torch_geometric.transforms as T
 
 # custom modules
 from lrgae.dataset import load_dataset
-from lrgae.decoders import HeteroEdgeDecoder
+from lrgae.decoders import HeteroCrossCorrelationDecoder
 from lrgae.masks import MaskHeteroEdge
 from lrgae.encoders import HeteroGNNEncoder
-from lrgae.models import MaskGAE
+from lrgae.models import S2GAE
 from lrgae.utils import set_seed
 from lrgae.evaluators import NodeClasEvaluator
 
@@ -107,13 +107,13 @@ encoder = HeteroGNNEncoder(data.metadata(),
                            layer=args.layer,
                            activation=args.encoder_activation)
 
-decoder = HeteroEdgeDecoder(data.metadata(),
-                      hidden_channels=args.decoder_channels,
-                      num_layers=args.decoder_layers,
-                      dropout=args.decoder_dropout,
-                      norm=args.decoder_norm)
+decoder = HeteroCrossCorrelationDecoder(data.metadata(),
+                                        hidden_channels=args.decoder_channels,
+                                        num_layers=args.decoder_layers,
+                                        dropout=args.decoder_dropout,
+                                        norm=args.decoder_norm)
 
-model = MaskGAE(encoder, decoder, mask).to(device)
+model = S2GAE(encoder, decoder, mask).to(device)
 
 best_metric = None
 optimizer = torch.optim.Adam(model.parameters(),

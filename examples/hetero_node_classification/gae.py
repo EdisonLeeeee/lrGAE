@@ -10,7 +10,7 @@ from lrgae.dataset import load_dataset
 from lrgae.decoders import HeteroEdgeDecoder
 from lrgae.masks import MaskHeteroEdge
 from lrgae.encoders import HeteroGNNEncoder
-from lrgae.models import MaskGAE
+from lrgae.models import GAE
 from lrgae.utils import set_seed
 from lrgae.evaluators import NodeClasEvaluator
 
@@ -48,9 +48,6 @@ parser.add_argument('--weight_decay', type=float, default=5e-5,
                     help='weight_decay for link prediction training. (default: 5e-5)')
 parser.add_argument('--grad_norm', type=float, default=1.0,
                     help='grad_norm for training. (default: 1.0.)')
-
-parser.add_argument('--p', type=float, default=0.5,
-                    help='Mask ratio or sample ratio for HeteroMaskEdge')
 
 parser.add_argument("--mode", default="cat",
                     help="Embedding mode `last` or `cat` (default: `cat`)")
@@ -96,8 +93,6 @@ evaluator = NodeClasEvaluator(lr=args.nodeclas_lr,
                               node_type=node_type,
                               device=device)
 
-mask = MaskHeteroEdge(p=args.p)
-
 encoder = HeteroGNNEncoder(data.metadata(),
                            hidden_channels=args.encoder_channels,
                            out_channels=args.encoder_channels,
@@ -113,7 +108,7 @@ decoder = HeteroEdgeDecoder(data.metadata(),
                       dropout=args.decoder_dropout,
                       norm=args.decoder_norm)
 
-model = MaskGAE(encoder, decoder, mask).to(device)
+model = GAE(encoder, decoder).to(device)
 
 best_metric = None
 optimizer = torch.optim.Adam(model.parameters(),

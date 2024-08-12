@@ -12,6 +12,7 @@ from copy import copy
 from typing import Optional, Tuple
 
 from torch import Tensor
+from torch_geometric.data import Data
 from torch_geometric.utils import degree, sort_edge_index, to_undirected
 from torch_geometric.utils.num_nodes import maybe_num_nodes
 
@@ -212,8 +213,9 @@ class NullMask(nn.Module):
         
     def forward(self, data):
         remaining_graph = copy(data)
-        remaining_graph.masked_nodes = data.x.new_ones(data.x.size(0), 1, dtype=torch.bool)
-        remaining_graph.masked_edges = data.edge_index
+        if isinstance(data, Data):
+            remaining_graph.masked_nodes = data.x.new_ones(data.x.size(0), 1, dtype=torch.bool)
+            remaining_graph.masked_edges = data.edge_index
         return remaining_graph, copy(data)
 
 

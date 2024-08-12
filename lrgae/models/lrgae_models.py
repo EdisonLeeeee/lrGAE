@@ -1,7 +1,10 @@
+from typing import Union
+
 import torch
 import torch.nn as nn
+from torch_geometric.data import Data, HeteroData
 
-from lrgae.losses import FusedBCE, SCELoss, FusedAUC, FusedNCE, SimCSE
+from lrgae.losses import FusedBCE, SCELoss, FusedAUC, FusedNCE, SimCSE, HeteroFusedBCE
 from lrgae.negative_sampling import negative_sampling
 
 
@@ -38,7 +41,10 @@ class lrGAE(nn.Module):
         self.view = view
 
         if loss == "bce":
-            self.loss_fn = FusedBCE(decoder)
+            if decoder.__class__.__name__.startswith('Hetero'):
+                self.loss_fn = HeteroFusedBCE(decoder)
+            else:
+                self.loss_fn = FusedBCE(decoder)
             assert pair == 'vu'
         elif loss == 'auc':
             self.loss_fn = FusedAUC(decoder)
@@ -100,7 +106,13 @@ class lrGAE(nn.Module):
                             right.masked_select(masked_nodes))
         return loss
 
-    def train_step_structure(self, graph):
+    def train_step_structure(self, graph: Union[Data, HeteroData]) -> torch.Tensor:
+        if isinstance(graph, Data):
+            return self.train_step_structure_homo(graph)
+        else:
+            return self.train_step_structure_hetero(graph)
+            
+    def train_step_structure_homo(self, graph: Data) -> torch.Tensor:
         remaining_graph, masked_graph = self.mask(graph)
 
         # case A=B
@@ -142,6 +154,46 @@ class lrGAE(nn.Module):
                                      )
         loss = self.loss_fn(left, right, masked_edges, neg_edges)
         return loss
+
+    def train_step_structure_hetero(self, graph: HeteroData) -> torch.Tensor:
+        remaining_graph, masked_graph = self.mask(graph)
+
+        # case A=B
+        if self.view == 'AA':
+            masked_graph = remaining_graph
+        elif self.view == 'BB':
+            remaining_graph = masked_graph
+
+        if self.left > 0:
+            zA = self.encoder(remaining_graph.x_dict, remaining_graph.edge_index_dict)
+        else:
+            zA = [remaining_graph.x_dict]
+
+        if self.view == 'AB':
+            if self.right > 0:
+                zB = self.encoder(masked_graph.x_dict, masked_graph.edge_index_dict)
+            else:
+                zB = [remaining_graph.x_dict]
+        else:
+            zB = zA
+
+        left = zA[self.left]
+        right = zB[self.right]
+
+        neg_edge_index_dict = {}
+        for edge_type, masked_edges in masked_graph.edge_index_dict.items():
+            src, _, dst = edge_type
+            neg_edge_index_dict[edge_type] = negative_sampling(self.negative_sampler,
+                                      x=(masked_graph[src].x, masked_graph[dst].x), 
+                                      edge_index=masked_edges,
+                                      num_neg_samples=masked_edges.size(1),
+                                      left=left,
+                                      right=right,  
+                                      decoder=self.decoder,
+                                     )   
+
+        loss = self.loss_fn(left, right, masked_graph.edge_index_dict, neg_edge_index_dict)
+        return loss    
 
     def extra_repr(self) -> str:
         return f'l={self.left}, r={self.right}, view={self.view}, pair={self.pair}'

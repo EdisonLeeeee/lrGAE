@@ -42,9 +42,9 @@ class MaskGAE(nn.Module):
 
     def train_step(self, graph: Union[Data, HeteroData], alpha: float = 0.) -> torch.Tensor:
         if isinstance(graph, Data):
-            return self.train_step_homo(graph)
+            return self.train_step_homo(graph, alpha=alpha)
         else:
-            return self.train_step_hetero(graph)
+            return self.train_step_hetero(graph, alpha=alpha)
         
     def train_step_homo(self, graph: Data, alpha: float = 0.) -> torch.Tensor:
         remaining_graph, masked_graph = self.mask(graph)

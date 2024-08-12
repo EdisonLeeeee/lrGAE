@@ -227,3 +227,43 @@ class HeteroEdgeDecoder(nn.Module):
             layer = self.layers['__'.join(edge_type)]
             out_dict[edge_type] = layer(left[src], right[dst], edge_index, sigmoid=sigmoid)
         return out_dict
+
+
+class HeteroCrossCorrelationDecoder(nn.Module):
+    def __init__(
+        self,
+        metadata,
+        hidden_channels,
+        out_channels=1,
+        num_layers=2,
+        dropout=0.5,
+        activation="relu",
+        norm="none",
+    ):
+        super().__init__()
+        self.layers = nn.ModuleDict({
+            '__'.join(edge_type): CrossCorrelationDecoder(-1, 
+                                   hidden_channels=hidden_channels,
+                                   out_channels=out_channels,
+                                   num_layers=num_layers,
+                                   dropout=dropout,
+                                   activation=activation,
+                                   norm=norm,
+                                  )
+            for edge_type in metadata[1]
+        })       
+
+    def reset_parameters(self):
+        for layer in self.layers:
+            if hasattr(layer, "reset_parameters"):
+                layer.reset_parameters()
+
+    def forward(self, left, right, pairs, sigmoid=True):
+        out_dict = {}
+        for edge_type, edge_index in pairs.items():
+            src, _, dst = edge_type
+            layer = self.layers['__'.join(edge_type)]
+            left_list = [l[src] for l in left]
+            right_list = [r[dst] for r in right]
+            out_dict[edge_type] = layer(left_list, right_list, edge_index, sigmoid=sigmoid)
+        return out_dict

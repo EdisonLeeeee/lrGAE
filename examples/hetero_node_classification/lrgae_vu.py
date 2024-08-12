@@ -8,15 +8,19 @@ import torch_geometric.transforms as T
 # custom modules
 from lrgae.dataset import load_dataset
 from lrgae.decoders import HeteroEdgeDecoder
-from lrgae.masks import MaskHeteroEdge
+from lrgae.masks import MaskHeteroEdge, NullMask
 from lrgae.encoders import HeteroGNNEncoder
-from lrgae.models import MaskGAE
+from lrgae.models import lrGAE
 from lrgae.utils import set_seed
 from lrgae.evaluators import NodeClasEvaluator
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--dataset", default="DBLP",
                     help="Datasets. (default: DBLP)")
+parser.add_argument("--mask", default="edge",
+                    help="Masking stractegy, `edge` or `None` (default: path)")
+parser.add_argument("--view", default="AA",
+                    help="Contrastive graph views, `AA`, `AB` or `BB` (default: AA)")
 parser.add_argument('--seed', type=int, default=2024,
                     help='Random seed for model and dataset. (default: 2024)')
 
@@ -41,6 +45,11 @@ parser.add_argument('--decoder_dropout', type=float, default=0.2,
                     help='Dropout probability of decoder. (default: 0.2)')
 parser.add_argument("--decoder_norm",
                     default="none", help="Normalization (default: none)")
+
+parser.add_argument('--left', type=int, default=2,
+                    help='Left layer. (default: 2)')
+parser.add_argument('--right', type=int, default=2,
+                    help='Right layer. (default: 2)')
 
 parser.add_argument('--lr', type=float, default=0.005,
                     help='Learning rate for training. (default: 0.005)')
@@ -96,7 +105,11 @@ evaluator = NodeClasEvaluator(lr=args.nodeclas_lr,
                               node_type=node_type,
                               device=device)
 
-mask = MaskHeteroEdge(p=args.p)
+assert args.mask in ['edge', 'none']
+if args.mask == 'edge':
+    mask = MaskHeteroEdge(p=args.p)
+else:
+    mask = NullMask()  # vanilla GAE
 
 encoder = HeteroGNNEncoder(data.metadata(),
                            hidden_channels=args.encoder_channels,
@@ -113,7 +126,11 @@ decoder = HeteroEdgeDecoder(data.metadata(),
                       dropout=args.decoder_dropout,
                       norm=args.decoder_norm)
 
-model = MaskGAE(encoder, decoder, mask).to(device)
+model = lrGAE(encoder, decoder, mask,
+              left=args.left,
+              right=args.right,
+              view=args.view,
+              pair='vu').to(device)
 
 best_metric = None
 optimizer = torch.optim.Adam(model.parameters(),
