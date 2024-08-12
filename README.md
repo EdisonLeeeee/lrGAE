@@ -26,10 +26,13 @@ pip install -e . --verbose
 where `-e` means "editable" mode so you don't have to reinstall every time you make changes.
 
 # Reproduction
+Five graph-based learning tasks are supported:
+
 + [Node classification task](./examples/node_classification)
 + [Link prediction task](./examples/link_prediction)
 + [Graph clustering task](./examples/graph_clustering)
 + [Graph classification task](./examples/graph_classification)
++ [Heterogeneous node classification task](./examples/hetero_node_classification)
 
 # 👀 Implementations
 + GAE and GAE$_f$: Variational graph auto-encoders. NeurIPS 2016 
