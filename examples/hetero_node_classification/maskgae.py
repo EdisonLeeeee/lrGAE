@@ -26,7 +26,7 @@ parser.add_argument("--layer", default="sage",
 parser.add_argument("--encoder_activation", default="relu",
                     help="Activation function for GNN encoder, (default: relu)")
 parser.add_argument('--encoder_channels', type=int, default=256,
-                    help='Channels of hidden representation. (default: 128)')
+                    help='Channels of hidden representation. (default: 256)')
 parser.add_argument('--encoder_layers', type=int, default=2,
                     help='Number of layers for encoder. (default: 2)')
 parser.add_argument('--encoder_dropout', type=float, default=0.5,
@@ -43,19 +43,15 @@ parser.add_argument('--decoder_dropout', type=float, default=0.2,
 parser.add_argument("--decoder_norm",
                     default="none", help="Normalization (default: none)")
 
-parser.add_argument('--lr', type=float, default=0.01,
-                    help='Learning rate for training. (default: 0.01)')
+parser.add_argument('--lr', type=float, default=0.005,
+                    help='Learning rate for training. (default: 0.005)')
 parser.add_argument('--weight_decay', type=float, default=5e-5,
                     help='weight_decay for link prediction training. (default: 5e-5)')
 parser.add_argument('--grad_norm', type=float, default=1.0,
                     help='grad_norm for training. (default: 1.0.)')
 
-parser.add_argument('--alpha', type=float, default=0.001,
-                    help='loss weight for degree prediction. (default: 0.001)')
-parser.add_argument("--start", default="node",
-                    help="Which Type to sample starting nodes for random walks, (default: node)")
-parser.add_argument('--p', type=float, default=0.7,
-                    help='Mask ratio or sample ratio for MaskEdge/MaskPath')
+parser.add_argument('--p', type=float, default=0.5,
+                    help='Mask ratio or sample ratio for HeteroMaskEdge')
 
 parser.add_argument("--mode", default="cat",
                     help="Embedding mode `last` or `cat` (default: `cat`)")
@@ -104,13 +100,13 @@ evaluator = NodeClasEvaluator(lr=args.nodeclas_lr,
 mask = MaskHeteroEdge(p=args.p)
 
 encoder = HeteroGNNEncoder(data.metadata(),
-                     hidden_channels=args.encoder_channels,
-                     out_channels=args.encoder_channels,
-                     num_layers=args.encoder_layers,
-                     dropout=args.encoder_dropout,
-                     norm=args.encoder_norm,
-                     layer=args.layer,
-                     activation=args.encoder_activation)
+                           hidden_channels=args.encoder_channels,
+                           out_channels=args.encoder_channels,
+                           num_layers=args.encoder_layers,
+                           dropout=args.encoder_dropout,
+                           norm=args.encoder_norm,
+                           layer=args.layer,
+                           activation=args.encoder_activation)
 
 decoder = HeteroEdgeDecoder(data.metadata(),
                       hidden_channels=args.decoder_channels,
@@ -130,7 +126,7 @@ for epoch in pbar:
 
     optimizer.zero_grad()
     model.train()
-    loss = model.train_step(data, alpha=args.alpha)
+    loss = model.train_step(data)
     loss.backward()
     if args.grad_norm > 0:
         nn.utils.clip_grad_norm_(model.parameters(), args.grad_norm)

@@ -4,7 +4,9 @@ import torch.nn.functional as F
 import torch_geometric.transforms as T
 from torch_geometric.data import Data
 from torch_geometric.datasets import Amazon, Coauthor, Planetoid, Reddit, TUDataset, HGBDataset
-from torch_geometric.utils import index_to_mask, degree
+from torch_geometric.data.datapipes import functional_transform
+from torch_geometric.transforms import BaseTransform
+from torch_geometric.utils import index_to_mask, degree, one_hot
 
 def generate_random_splits(num_nodes, train_ratio, val_ratio):
     test_ratio = 1 - train_ratio - val_ratio
@@ -40,12 +42,7 @@ class OneHotLabel(T.BaseTransform):
         else:
             data.x = y.to(torch.float)        
         return data
-import torch
 
-from torch_geometric.data import Data
-from torch_geometric.data.datapipes import functional_transform
-from torch_geometric.transforms import BaseTransform
-from torch_geometric.utils import degree, one_hot
 
 
 class OneHotDegree(T.BaseTransform):
@@ -147,8 +144,6 @@ def load_dataset(root: str, name: str, transform=None) -> Data:
         data = HGBDataset(root=f'{root}/HGBDataset', name=name.lower(), transform=transform)[0]
         if name == 'ACM':
             data['term'].x = torch.zeros(data['term'].num_nodes, 1)
-        elif name == 'IMDB':
-            data['keyword'].x = torch.zeros(data['keyword'].num_nodes, 1)
         else:
             for nt in data.node_types:
                 if data[nt].get('x') is None:
@@ -162,7 +157,17 @@ def load_dataset(root: str, name: str, transform=None) -> Data:
         )
         data[node_type].train_mask = train_mask
         data[node_type].val_mask = val_mask
-        data[node_type].test_mask = test_mask          
+        data[node_type].test_mask = test_mask        
+        # train_mask = data[node_type].train_mask
+        # val_mask = data[node_type].get('val_mask')
+        # if val_mask is None:
+        #     train_idx = train_mask.nonzero().view(-1)
+        #     num_valid_samples = int(train_idx.size(0)*0.2)
+        #     valid_idx = train_idx[torch.randperm(train_idx.size(0))[
+        #         :num_valid_samples]]
+        #     train_mask[valid_idx] = False
+        #     val_mask = index_to_mask(valid_idx, data[node_type].num_nodes) 
+        # data[node_type].val_mask = val_mask
     else:
         raise ValueError(name)
     return data

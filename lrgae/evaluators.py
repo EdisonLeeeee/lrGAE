@@ -9,6 +9,7 @@ from torch_geometric.nn import global_add_pool, global_mean_pool, global_max_poo
 from torch_geometric.data import Data, HeteroData
 from sklearn.metrics import (average_precision_score,
                              roc_auc_score,
+                             f1_score,
                              normalized_mutual_info_score,
                              adjusted_rand_score,
                              accuracy_score)
@@ -65,18 +66,24 @@ class NodeClasEvaluator:
         if isinstance(data, HeteroData):
             data = data[self.node_type]
         y = data.y.squeeze().to(self.device)
+
+        multi_class = y.dim() > 1
             
         train_x, train_y = embeddings[data.train_mask], y[data.train_mask]
         val_x, val_y = embeddings[data.val_mask], y[data.val_mask]
         test_x, test_y = embeddings[data.test_mask], y[data.test_mask]
 
         num_features = embeddings.size(1)
-        num_classes = y.max().item() + 1
+        if multi_class:
+            num_classes = y.size(1)
+        else:
+            num_classes = y.max().item() + 1
         LR = LogisticRegression(num_features, num_classes,
                                 lr=self.lr,
                                 weight_decay=self.weight_decay,
                                 batch_size=self.batch_size,
                                 epochs=self.epochs,
+                                multi_class=multi_class,
                                 device=self.device)
 
         results = []
@@ -88,8 +95,10 @@ class NodeClasEvaluator:
                                   test_y,
                                   val_x,
                                   val_y))
-
-        return {'acc': np.mean(results)}
+        if multi_class:
+            return {'micro-f1': np.mean(results)}
+        else:
+            return {'acc': np.mean(results)}
 
 
 class GraphClasEvaluator:
@@ -296,12 +305,14 @@ class LogisticRegression:
                  weight_decay: float = 0.,
                  batch_size: int = 512,
                  epochs: int = 100,
+                 multi_class: bool = False,
                  device: str = 'cpu',
                  ):
         self.lr = lr
         self.weight_decay = weight_decay
         self.batch_size = batch_size
         self.epochs = epochs
+        self.multi_class = multi_class
         self.device = device
         self.classifier = nn.Linear(in_channels, out_channels).to(device)
 
@@ -327,11 +338,15 @@ class LogisticRegression:
                                  batch_size=20000)
 
         best_val_metric = test_metric = 0
+        if self.multi_class:
+            loss_fn = F.binary_cross_entropy_with_logits
+        else:
+            loss_fn = F.cross_entropy
         for _ in range(1, self.epochs + 1):
             classifier.train()
             for x, y in train_loader:
                 optimizer.zero_grad()
-                F.cross_entropy(classifier(x), y).backward()
+                loss_fn(classifier(x), y).backward()
                 optimizer.step()
 
             test_metric = self.evaluate(test_loader)
@@ -356,5 +371,10 @@ class LogisticRegression:
             labels.append(y)
         logits = torch.cat(logits, dim=0).cpu()
         labels = torch.cat(labels, dim=0).cpu()
-        logits = logits.argmax(1)
-        return (logits == labels).float().mean().item()
+        if self.multi_class:
+            logits = (logits > 0).float()
+            return f1_score(logits, labels, average='micro')
+        else:
+            # acc
+            logits = logits.argmax(1)
+            return accuracy_score(logits, labels)
