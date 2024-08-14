@@ -10,16 +10,16 @@ Before you begin, please make sure that you have Anaconda or Miniconda installed
 
 ```shell
 # Create and activate a new Conda environment named 'lrGAE'
-conda create -n lrGAE
+conda create -n lrGAE python==3.12 -c conda-forge -y
 conda activate lrGAE
 
-# Install Pytorch 2.2.0 with CUDA 12.2 support
+# Install Pytorch 2.3.1 with CUDA 12.1 support
 # If your use a different CUDA version, please refer to the PyTorch website for the appropriate versions.
-conda install numpy
-conda install pytorch==2.2.0 pytorch-cuda=12.2 -c pytorch -c nvidia
+pip install torch==2.3.1 torchvision==0.18.1 torchaudio==2.3.1 --index-url https://download.pytorch.org/whl/cu121
 
 # Install additional dependencies
 pip install torch_geometric
+pip install pyg_lib torch_scatter torch_sparse torch_cluster -f https://data.pyg.org/whl/torch-2.3.0+cu121.html
 ```
 Additional dependences of PyG can be found at https://pytorch-geometric.readthedocs.io/en/latest/notes/installation.html
 
