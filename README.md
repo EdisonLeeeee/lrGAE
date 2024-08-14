@@ -5,8 +5,25 @@ We introduce `lrGAE` benchmark --- graph autoencoders as contrastive learning ar
 ![](imgs/cases.png)
 
 
-# 🚀 Installation
+# Environment Setup
+Before you begin, please make sure that you have Anaconda or Miniconda installed on your system. This guide assumes that you have a CUDA-enabled GPU.
 
+```shell
+# Create and activate a new Conda environment named 'lrGAE'
+conda create -n lrGAE
+conda activate lrGAE
+
+# Install Pytorch 2.2.0 with CUDA 12.2 support
+# If your use a different CUDA version, please refer to the PyTorch website for the appropriate versions.
+conda install numpy
+conda install pytorch==2.2.0 pytorch-cuda=12.2 -c pytorch -c nvidia
+
+# Install additional dependencies
+pip install torch_geometric
+```
+Additional dependences of PyG can be found at https://pytorch-geometric.readthedocs.io/en/latest/notes/installation.html
+
+# 🚀 Installation
 Please make sure you have installed [PyTorch](https://pytorch.org) and [PyTorch Geometric (PyG)](https://pytorch-geometric.readthedocs.io/en/latest/notes/installation.html).
 
 
