@@ -1,11 +1,27 @@
 # Revisiting and Benchmarking Graph Autoencoders: A Contrastive Learning Perspective
 
-We introduce `lrGAE` benchmark --- graph autoencoders as contrastive learning architectures.
+We introduce the `lrGAE` (left-rigt GAE) benchmark --- graph autoencoders as contrastive learning architectures. lrGAE provides a new contrastive learning perspective of designing powerful GAEs from five dimensions:
++ Augmentations
++ Encoder/decoder networks
++ Contrastive views
++ Contrastive losses
++ (optional) Negative examples
 
-![](imgs/cases.png)
+The **contrastive views** is the key to design different yet advanced GAEs, which invovels three components: *graph views, receptive fields, and node pairs.*
 
++ Graph views: the graph or augmentated graph in two contrastive views, denoted as graph $A$ or $B$.
++ Receptive fields: the depth of the graph neural network or the number of sampled hops in a node's neighborhood, denoted as $l$ or $r$.
++ Node pairs: the contrasting objective over a single node $v$ or two nodes $v$ and $u$.
 
-# Environment Setup
+Therefore, we have $2^3=8$ variants of lrGAE in terms of the **contrastive views**, shown below:
+
+<p align="center"> <img src="./imgs/cases.png" /> <p align="center"><em>Fig. 1. Illustration of seven possible cases of lrGAE.</em></p>
+
+> [!NOTE]
+> There are more than 7 variants of lrGAE, you can design more powerful GAEs by exploring different combinations of augmentation strategies, encoder/decoder networks, contrastive views, contrastive losses and even the negative sampling tricks.
+
+# 💫 Environment Setup
+
 Before you begin, please make sure that you have Anaconda or Miniconda installed on your system. This guide assumes that you have a CUDA-enabled GPU.
 
 ```shell
@@ -17,8 +33,9 @@ conda activate lrGAE
 # If your use a different CUDA version, please refer to the PyTorch website for the appropriate versions.
 pip install torch==2.3.1 torchvision==0.18.1 torchaudio==2.3.1 --index-url https://download.pytorch.org/whl/cu121
 
-# Install additional dependencies
+# Install PyG
 pip install torch_geometric
+# Install additional dependencies of PyG
 pip install pyg_lib torch_scatter torch_sparse torch_cluster -f https://data.pyg.org/whl/torch-2.3.0+cu121.html
 ```
 Additional dependences of PyG can be found at https://pytorch-geometric.readthedocs.io/en/latest/notes/installation.html
@@ -42,7 +59,7 @@ pip install -e . --verbose
 
 where `-e` means "editable" mode so you don't have to reinstall every time you make changes.
 
-# Reproduction
+# 📍 Reproduction
 Five graph-based learning tasks are supported:
 
 + [Node classification task](./examples/node_classification)
@@ -52,18 +69,20 @@ Five graph-based learning tasks are supported:
 + [Heterogeneous node classification task](./examples/hetero_node_classification)
 
 # 👀 Implementations
-+ GAE and GAE$_f$: Variational graph auto-encoders. NeurIPS 2016 
-+ MaskGAE: What’s behind the mask: Understanding masked graph modeling for graph autoencoders. KDD 2023
-+ GraphMAE: GraphMAE: Self-supervised masked graph autoencoders. KDD 2022
-+ GraphMAE2: GraphMAE2: A decoding-enhanced masked self-supervised graph learner. WWW 2023
-+ AUG-MAE: Rethinking graph masked autoencoders through alignment and uniformity. AAAI 2024
-+ GiGaMAE: GiGaMAE: Generalizable graph masked autoencoder via collaborative latent space reconstruction. CIKM 2023
-+ S2GAE: S2GAE: self-supervised graph autoencoders are generalizable learners with graph masking. WSDM 2023
-+ 7 variants of lrGAE
-    + lrGAE-ABllvv
-    + lrGAE-AAlrvv
-    + lrGAE-ABlrvv
-    + lrGAE-AAllvu
-    + lrGAE-AAlrvu
-    + lrGAE-ABllvu
-    + lrGAE-ABlrvu
+
+
++ GAE: [Variational graph auto-encoders](https://arxiv.org/abs/1611.07308). NeurIPS 2016 
++ MaskGAE: [What’s behind the mask: Understanding masked graph modeling for graph autoencoders](https://arxiv.org/abs/2205.10053). KDD 2023
++ GraphMAE: [GraphMAE: Self-supervised masked graph autoencoders](https://arxiv.org/abs/2205.10803). KDD 2022
++ GraphMAE2: [GraphMAE2: A decoding-enhanced masked self-supervised graph learner](https://arxiv.org/abs/2304.04779). WWW 2023
++ AUG-MAE: [Rethinking graph masked autoencoders through alignment and uniformity](https://arxiv.org/abs/2402.07225). AAAI 2024
++ GiGaMAE: [GiGaMAE: Generalizable graph masked autoencoder via collaborative latent space reconstruction](https://arxiv.org/abs/2308.09663). CIKM 2023
++ S2GAE: [S2GAE: self-supervised graph autoencoders are generalizable learners with graph masking](https://dl.acm.org/doi/10.1145/3539597.3570404). WSDM 2023
++ 7 variants of lrGAE in terms of different contrastive views (See Fig.1 for illustration)
+    + 2️⃣ lrGAE-ABllvv
+    + 3️⃣ lrGAE-AAlrvv
+    + 4️⃣ lrGAE-ABlrvv
+    + 5️⃣ lrGAE-AAllvu
+    + 5️⃣ lrGAE-AAlrvu
+    + 7️⃣ lrGAE-ABllvu
+    + 8️⃣ lrGAE-ABlrvu
