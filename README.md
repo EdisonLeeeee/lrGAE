@@ -1,5 +1,7 @@
 # Revisiting and Benchmarking Graph Autoencoders: A Contrastive Learning Perspective
 
+<p align="center"> <img src="./imgs/comparison.png" /> <p align="center"><em>Fig. 1. Comparison of different GAEs from contrastive learning perspective.</em></p>
+
 We introduce the `lrGAE` (left-rigt GAE) benchmark --- graph autoencoders as contrastive learning architectures. lrGAE provides a new contrastive learning perspective of designing powerful GAEs from five dimensions:
 + Augmentations
 + Encoder/decoder networks
@@ -15,7 +17,7 @@ The **contrastive views** is the key to design different yet advanced GAEs, whic
 
 Therefore, we have $2^3=8$ variants of lrGAE in terms of the **contrastive views**, shown below:
 
-<p align="center"> <img src="./imgs/cases.png" /> <p align="center"><em>Fig. 1. Illustration of seven possible cases of lrGAE.</em></p>
+<p align="center"> <img src="./imgs/cases_table.png" /> <p align="center"><em>Fig. 2. Illustration of all possible cases of GAEs falling within the lrGAE frmework</em></p>
 
 > [!NOTE]
 > There are more than 7 variants of lrGAE, you can design more powerful GAEs by exploring different combinations of augmentation strategies, encoder/decoder networks, contrastive views, contrastive losses and even the negative sampling tricks.
@@ -78,7 +80,7 @@ Five graph-based learning tasks are supported:
 + AUG-MAE: [Rethinking graph masked autoencoders through alignment and uniformity](https://arxiv.org/abs/2402.07225). AAAI 2024
 + GiGaMAE: [GiGaMAE: Generalizable graph masked autoencoder via collaborative latent space reconstruction](https://arxiv.org/abs/2308.09663). CIKM 2023
 + S2GAE: [S2GAE: self-supervised graph autoencoders are generalizable learners with graph masking](https://dl.acm.org/doi/10.1145/3539597.3570404). WSDM 2023
-+ 7 variants of lrGAE in terms of different contrastive views (See Fig.1 for illustration)
++ 7 variants of lrGAE in terms of different contrastive views (See Fig.3 for illustration)
     + 2️⃣ lrGAE-ABllvv
     + 3️⃣ lrGAE-AAlrvv
     + 4️⃣ lrGAE-ABlrvv
@@ -86,3 +88,5 @@ Five graph-based learning tasks are supported:
     + 5️⃣ lrGAE-AAlrvu
     + 7️⃣ lrGAE-ABllvu
     + 8️⃣ lrGAE-ABlrvu
+    + 
+<p align="center"> <img src="./imgs/cases.png" /> <p align="center"><em>Fig. 3. Illustration of seven possible cases of lrGAE.</em></p>
