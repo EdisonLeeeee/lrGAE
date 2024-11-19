@@ -76,10 +76,11 @@ class GNNEncoder(nn.Module):
                     layer.reset_parameters()
 
     def forward(self, x, edge_index):
+        edge_index = to_sparse_tensor(edge_index, num_nodes=x.size(0))
         out = [x]
         for block in self.network:
             x = block(x, edge_index)
-            out.append(x)
+            out.append(x.detach())
         return out
 
 class PCA(nn.Module):

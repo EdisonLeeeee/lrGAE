@@ -98,7 +98,7 @@ python graphmae.py --dataset Pubmed --mode cat
 python graphmae.py --dataset Photo
 python graphmae.py --dataset Computers
 python graphmae.py --dataset CS
-python graphmae.py --dataset Physics
+python graphmae.py --dataset Physics --encoder_channels 16
 ```
 
 + GraphMAE2
