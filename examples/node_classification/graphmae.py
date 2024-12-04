@@ -123,7 +123,6 @@ model = GraphMAE(encoder=encoder, decoder=decoder, neck=neck,
                  alpha=args.alpha,
                  replace_rate=args.replace_rate,
                  mask_rate=args.p).to(device)
-print(model)
 best_metric = None
 optimizer = torch.optim.Adam(model.parameters(),
                              lr=args.lr,

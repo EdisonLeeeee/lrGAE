@@ -80,7 +80,7 @@ class GNNEncoder(nn.Module):
         out = [x]
         for block in self.network:
             x = block(x, edge_index)
-            out.append(x.detach())
+            out.append(x)
         return out
 
 class PCA(nn.Module):
