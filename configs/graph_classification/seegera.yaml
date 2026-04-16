@@ -1,0 +1,41 @@
+task: graph_classification
+method: SeeGera
+data_root: ~/public_data/pyg_data
+supported_datasets:
+- IMDB-BINARY
+- IMDB-MULTI
+- PROTEINS
+- COLLAB
+- MUTAG
+- REDDIT-BINARY
+- NCI1
+base_config:
+  seed: 2024
+  device: 0
+  epochs: 200
+  eval_steps: 5
+  graphclas_lr: 0.01
+  graphclas_weight_decay: 5.0e-05
+  mode: last
+  l2_normalize: false
+  pooling: sum
+  layer: gin
+  encoder_activation: prelu
+  encoder_channels: 512
+  encoder_layers: 2
+  encoder_dropout: 0.0
+  encoder_norm: none
+  num_heads: 4
+  decoder_channels: 512
+  decoder_layers: 1
+  decoder_dropout: 0.0
+  decoder_norm: none
+  feature_mask_rate: 0.7
+  edge_mask_rate: 0.3
+  latent_kl_weight: 0.0001
+  recon_losses:
+  - bce
+  - mse
+  - sce
+  lr: 0.0001
+  weight_decay: 0

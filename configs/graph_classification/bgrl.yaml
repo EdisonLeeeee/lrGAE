@@ -1,0 +1,37 @@
+task: graph_classification
+method: BGRL
+data_root: ~/public_data/pyg_data
+supported_datasets:
+- IMDB-BINARY
+- IMDB-MULTI
+- PROTEINS
+- COLLAB
+- MUTAG
+- REDDIT-BINARY
+- NCI1
+base_config:
+  seed: 2024
+  device: 0
+  epochs: 200
+  eval_steps: 5
+  graphclas_lr: 0.01
+  graphclas_weight_decay: 5.0e-05
+  mode: last
+  l2_normalize: false
+  pooling: sum
+  layer: gin
+  encoder_layers: 2
+  encoder_channels: 256
+  encoder_dropout: 0.5
+  encoder_norm: none
+  optimizer: adam
+  weight_decay: 1.0e-05
+  encoder_activation: prelu
+  proj_hidden_channels: 512
+  predictor_hidden_channels: 512
+  ema_decay: 0.99
+  edge_drop_rate_1: 0.2
+  edge_drop_rate_2: 0.4
+  feat_drop_rate_1: 0.3
+  feat_drop_rate_2: 0.4
+  lr: 0.001

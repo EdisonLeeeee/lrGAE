@@ -1,0 +1,24 @@
+task: heterogeneous_node_classification
+method: HAN
+data_root: ~/public_data/pyg_data
+supported_datasets:
+- DBLP
+- ACM
+- IMDB
+base_config:
+  seed: 2024
+  device: 0
+  epochs: 500
+  eval_steps: 50
+  nodeclas_lr: 0.01
+  nodeclas_weight_decay: 5.0e-05
+  mode: cat
+  l2_normalize: false
+  layer: han
+  encoder_channels: 256
+  encoder_layers: 2
+  num_heads: 8
+  encoder_dropout: 0.5
+  lr: 0.005
+  weight_decay: 5.0e-05
+  encoder_activation: elu

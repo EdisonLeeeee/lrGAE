@@ -1,0 +1,33 @@
+task: node_classification
+method: S3GCL
+data_root: ~/public_data/pyg_data
+supported_datasets:
+- Cora
+- Citeseer
+- Pubmed
+- Photo
+- Computers
+- CS
+- Physics
+base_config:
+  seed: 2024
+  device: 0
+  epochs: 500
+  eval_steps: 50
+  nodeclas_lr: 0.01
+  nodeclas_weight_decay: 5.0e-05
+  mode: last
+  l2_normalize: false
+  layer: gcn
+  encoder_layers: 2
+  encoder_channels: 256
+  encoder_dropout: 0.5
+  encoder_norm: none
+  optimizer: adam
+  weight_decay: 1.0e-05
+  encoder_activation: prelu
+  spectral_hops: 2
+  spatial_edge_drop_rate: 0.2
+  feat_drop_rate: 0.2
+  tau: 0.4
+  lr: 0.001
