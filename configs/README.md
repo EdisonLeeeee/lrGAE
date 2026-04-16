@@ -1,6 +1,6 @@
 # Supplemental YAML Configs
 
-This bundle contains clean YAML configuration files for the supplemental baselines.
+This directory contains clean YAML configuration files for the supplemental baselines.
 
 ## Directory layout
 
@@ -17,5 +17,3 @@ Each YAML file contains only the following keys:
 - `data_root`
 - `supported_datasets`
 - `base_config`
-
-A summary index is provided in `config_summary.csv`.
